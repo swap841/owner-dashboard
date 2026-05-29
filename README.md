@@ -25,8 +25,8 @@ npm install --legacy-peer-deps
 ### 2. Configure Environment Variables
 Create a file named `.env.local` in the root folder (preconfigured templates have been written for you):
 ```env
-# ImgBB API Key for product/category image uploads (free from api.imgbb.com)
-NEXT_PUBLIC_IMGBB_API_KEY=810178a2497b6ece3e065022d318e6c6
+# ImgBB API Key (server-side only — used by /api/upload-photo proxy)
+IMGBB_API_KEY=your_imgbb_api_key_here
 
 # reCAPTCHA v3 Site Key for Firebase App Check
 NEXT_PUBLIC_RECAPTCHA_SITE_KEY=YOUR_RECAPTCHA_SITE_KEY

@@ -3,8 +3,6 @@ import {
   getFirestore,
   collection,
   doc,
-  addDoc,
-  updateDoc,
   getDocs,
   query,
   orderBy,
@@ -13,12 +11,34 @@ import {
 import { SalaryPayment } from "../../types";
 
 const db = getFirestore(app);
+const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || "";
 
 export async function paySalary(
   col: "workers" | "deliveryBoys",
   personId: string,
   payment: Omit<SalaryPayment, "id">
 ): Promise<void> {
+  if (SERVER_URL) {
+    const res = await fetch(`${SERVER_URL}/paySalary`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        collection: col,
+        personId,
+        amount: payment.amount,
+        monthYear: payment.monthYear,
+        mode: payment.mode,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Failed to pay salary");
+    }
+    return;
+  }
+
+  // Fallback: direct Firestore (for local dev without server)
+  const { addDoc, updateDoc } = await import("firebase/firestore");
   await addDoc(collection(db, col, personId, "salaryPayments"), payment);
   await updateDoc(doc(db, col, personId), {
     totalEarnings: increment(payment.amount),

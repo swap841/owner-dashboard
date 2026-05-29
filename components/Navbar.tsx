@@ -20,6 +20,9 @@ export default function Navbar() {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
     });
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/firebase-messaging-sw.js").catch(() => {});
+    }
     return () => unsubscribe();
   }, []);
 
@@ -45,9 +48,37 @@ export default function Navbar() {
   // ===========================================
   // 🔥 SHOW ONLY PROFILE IMAGE ON DASHBOARD
   // ===========================================
+  const getFcmToken = async () => {
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        alert("Notification permission required to get FCM token.");
+        return;
+      }
+      const { getMessaging, getToken } = await import("firebase/messaging");
+      const { getFirestore, doc, setDoc } = await import("firebase/firestore");
+      const msg = getMessaging(app);
+      const token = await getToken(msg, {
+        vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+      });
+      const db = getFirestore(app);
+      await setDoc(doc(db, "contactInfo", "info"), { ownerFcmToken: token }, { merge: true });
+      alert(`FCM Token saved & copied!\n\n${token}`);
+    } catch (err: any) {
+      alert("Error getting FCM token: " + err.message);
+    }
+  };
+
   if (user && pathname === "/dashboard") {
     return (
-      <div className="fixed top-4 right-3 z-50">
+      <div className="fixed top-4 right-3 z-50 flex items-center gap-2">
+        <button
+          onClick={getFcmToken}
+          title="Get FCM Token"
+          className="w-8 h-8 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-full flex items-center justify-center text-sm font-bold transition"
+        >
+          🔔
+        </button>
         <Link href="/profile">
           <Image
             src={user.photoURL || FALLBACK_IMAGE_URL}

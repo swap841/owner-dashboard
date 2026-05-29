@@ -51,10 +51,22 @@ export async function replyToContact(id: string, message: string): Promise<void>
 }
 
 export async function updateContactStatus(id: string, status: "open" | "in-progress" | "resolved"): Promise<void> {
-  await updateDoc(doc(db, "contacts", id), { status });
+  const replyMessage =
+    status === "in-progress" ? "We are looking into your complaint. We'll get back to you shortly." :
+    status === "resolved" ? "Your complaint has been resolved." :
+    "";
+  const update: any = { status };
+  if (replyMessage) {
+    update.replies = arrayUnion({
+      message: replyMessage,
+      createdAt: Timestamp.now(),
+      by: "owner",
+    } as ContactReply);
+  }
+  await updateDoc(doc(db, "contacts", id), update);
 }
 
-export async function createReplacementOrder(contactId: string): Promise<string | null> {
+export async function createReplacementOrder(contactId: string, selectedItems?: string[]): Promise<string | null> {
   const contact = await getContact(contactId);
   if (!contact || !contact.userId || !contact.orderId) return null;
 
@@ -63,10 +75,16 @@ export async function createReplacementOrder(contactId: string): Promise<string 
   if (!originalOrderSnap.exists()) return null;
   const originalOrder = originalOrderSnap.data();
 
+  // If selectedItems provided, filter to only those items; otherwise use all
+  const originalItems = originalOrder.items || [];
+  const itemsToDeliver = selectedItems && selectedItems.length > 0
+    ? originalItems.filter((item: any) => selectedItems.includes(item.name))
+    : originalItems;
+
   // Create replacement order
   const newOrderRef = doc(collection(db, "users", contact.userId, "orders"));
   const replacementOrder = {
-    items: originalOrder.items || [],
+    items: itemsToDeliver,
     address: originalOrder.address || {},
     status: "Pending",
     totalAmount: 0,
@@ -78,10 +96,21 @@ export async function createReplacementOrder(contactId: string): Promise<string 
   };
   await setDoc(newOrderRef, replacementOrder);
 
-  // Update contact with replacement order ID
+  // Build reply message
+  const itemNames = itemsToDeliver.map((i: any) => i.name).join(", ");
+  const replyMessage = selectedItems && selectedItems.length > 0
+    ? `We've re-delivered the missing items: ${itemNames}. Replacement order created.`
+    : "We've re-delivered all items. Replacement order created.";
+
+  // Update contact with replacement order ID and add reply
   await updateDoc(doc(db, "contacts", contactId), {
     replacementOrderId: newOrderRef.id,
     status: "resolved",
+    replies: arrayUnion({
+      message: replyMessage,
+      createdAt: Timestamp.now(),
+      by: "owner",
+    } as ContactReply),
   });
 
   return newOrderRef.id;

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useContacts } from "@/hooks/useContacts";
 import { Contact, ContactReply } from "@/types";
+import toast from "react-hot-toast";
 
 const STATUS_COLORS: Record<string, string> = {
   open: "bg-rose-100 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300",
@@ -20,11 +21,18 @@ const STATUS_ICONS: Record<string, any> = {
   resolved: CheckCircle2,
 };
 
+function parseItemsFromMessage(message: string): string[] {
+  const match = message.match(/Items:\s*(.+)/i);
+  if (!match) return [];
+  return match[1].split(",").map((s) => s.trim()).filter(Boolean);
+}
+
 export default function ContactsManager() {
   const { contacts, isLoading, replyToContact, updateContactStatus, createReplacementOrder, deleteContact } = useContacts();
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [sendingReply, setSendingReply] = useState<Record<string, boolean>>({});
   const [reordering, setReordering] = useState<Record<string, boolean>>({});
+  const [selectedItems, setSelectedItems] = useState<Record<string, string[]>>({});
 
   const handleReply = async (contactId: string) => {
     const msg = replyText[contactId]?.trim();
@@ -32,15 +40,30 @@ export default function ContactsManager() {
     setSendingReply((prev) => ({ ...prev, [contactId]: true }));
     try {
       await replyToContact({ id: contactId, message: msg });
+      console.log("[Owner] Reply sent to contact:", contactId);
       setReplyText((prev) => ({ ...prev, [contactId]: "" }));
-    } catch {}
+    } catch (err) {
+      console.error("[Owner] Reply failed:", err);
+      toast.error("Failed to send reply.");
+    }
     setSendingReply((prev) => ({ ...prev, [contactId]: false }));
   };
 
   const handleReorder = async (contactId: string) => {
     setReordering((prev) => ({ ...prev, [contactId]: true }));
-    await createReplacementOrder(contactId);
+    const items = selectedItems[contactId];
+    await createReplacementOrder({ contactId, selectedItems: items && items.length > 0 ? items : undefined });
     setReordering((prev) => ({ ...prev, [contactId]: false }));
+  };
+
+  const toggleItem = (contactId: string, itemName: string) => {
+    setSelectedItems((prev) => {
+      const current = prev[contactId] || [];
+      const next = current.includes(itemName)
+        ? current.filter((n) => n !== itemName)
+        : [...current, itemName];
+      return { ...prev, [contactId]: next };
+    });
   };
 
   const unresolved = contacts.filter((c) => c.status !== "resolved");
@@ -107,14 +130,14 @@ export default function ContactsManager() {
             <div className="space-y-2">
               {c.replies.map((r, idx) => (
                 <div key={idx} className="flex gap-2 items-start">
-                  <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Reply className="w-3 h-3 text-emerald-600" />
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${r.by === "owner" ? "bg-emerald-500/10" : "bg-blue-500/10"}`}>
+                    <Reply className={`w-3 h-3 ${r.by === "owner" ? "text-emerald-600" : "text-blue-600"}`} />
                   </div>
                   <div className="flex-1 bg-white dark:bg-zinc-800 rounded-xl px-3 py-2 border border-zinc-100 dark:border-zinc-700">
-                    <p className="text-[10px] font-semibold text-emerald-600">Owner</p>
+                    <p className={`text-[10px] font-semibold ${r.by === "owner" ? "text-emerald-600" : "text-blue-600"}`}>{r.by === "owner" ? "Owner" : "Customer"}</p>
                     <p className="text-xs text-zinc-700 dark:text-zinc-300 mt-0.5">{r.message}</p>
                     <p className="text-[9px] text-zinc-400 mt-1">
-                      {r.createdAt?.seconds ? new Date(r.createdAt.seconds * 1000).toLocaleString() : ""}
+                      {r.createdAt?.seconds ? new Date(r.createdAt.seconds * 1000).toLocaleString() : r.createdAt ? new Date(r.createdAt).toLocaleString() : ""}
                     </p>
                   </div>
                 </div>
@@ -146,6 +169,32 @@ export default function ContactsManager() {
               )}
             </div>
           )}
+
+          {/* Missing items checkboxes (only when complaint is about missing items) */}
+          {c.status !== "resolved" && c.message.toUpperCase().includes("[MISSING]") && (() => {
+            const items = parseItemsFromMessage(c.message);
+            if (items.length === 0) return null;
+            return (
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
+                <p className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2">
+                  Select missing items to re-deliver:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {items.map((item) => (
+                    <label key={item} className="flex items-center gap-1.5 bg-white dark:bg-zinc-800 border border-amber-200 dark:border-amber-700 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30 transition text-xs font-medium">
+                      <input
+                        type="checkbox"
+                        checked={(selectedItems[c.id!] || []).includes(item)}
+                        onChange={() => toggleItem(c.id!, item)}
+                        className="accent-amber-500 w-3.5 h-3.5"
+                      />
+                      {item}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Re-deliver button */}
           {c.status !== "resolved" && c.userId && c.orderId && !c.replacementOrderId && (

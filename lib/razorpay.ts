@@ -2,8 +2,12 @@
 
 import Razorpay from "razorpay";
 
-const keyId = process.env.RAZORPAY_KEY_ID || "rzp_test_xxxx";
-const keySecret = process.env.RAZORPAY_KEY_SECRET || "xxxx";
+const keyId = process.env.RAZORPAY_KEY_ID;
+const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+if (!keyId || !keySecret) {
+  throw new Error("Razorpay keys not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in environment.");
+}
 
 export const razorpay = new Razorpay({
   key_id: keyId,
@@ -11,13 +15,8 @@ export const razorpay = new Razorpay({
 });
 
 /**
- * Helper to check if Razorpay is configured with actual credentials (not defaults).
+ * Helper to check if Razorpay is configured.
  */
 export function isRazorpayConfigured(): boolean {
-  return (
-    keyId !== "rzp_test_xxxx" &&
-    keySecret !== "xxxx" &&
-    keyId.trim() !== "" &&
-    keySecret.trim() !== ""
-  );
+  return !!(keyId && keySecret);
 }

@@ -36,7 +36,7 @@ export function useContacts() {
   });
 
   const reorderMutation = useMutation({
-    mutationFn: (contactId: string) => createReplacementOrder(contactId),
+    mutationFn: ({ contactId, selectedItems }: { contactId: string; selectedItems?: string[] }) => createReplacementOrder(contactId, selectedItems),
     onSuccess: (orderId) => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       if (orderId) {

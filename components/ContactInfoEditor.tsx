@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Loader2, Settings, Save, Upload } from "lucide-react";
+import { Loader2, Settings, Save, Upload, MapPin } from "lucide-react";
 import { useContactInfoSettings } from "@/hooks/useContacts";
 import { ContactInfo } from "@/types";
 import { uploadToImgBB } from "@/lib/imageUpload";
@@ -13,6 +13,7 @@ export default function ContactInfoEditor() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [locating, setLocating] = useState(false);
 
   useEffect(() => {
     if (contactInfo && !loaded) {
@@ -47,6 +48,30 @@ export default function ContactInfoEditor() {
       toast.error("Failed to save settings.");
       setSaving(false);
     }
+  };
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation not supported by your browser");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setForm({
+          ...form,
+          warehouseLat: pos.coords.latitude,
+          warehouseLng: pos.coords.longitude,
+        });
+        setLocating(false);
+        toast.success("Store location set to current position!");
+      },
+      (err) => {
+        setLocating(false);
+        toast.error("Could not get location: " + err.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
   return (
@@ -146,6 +171,11 @@ export default function ContactInfoEditor() {
               <input type="number" step="any" value={form.warehouseLng || ""} onChange={e => setForm({...form, warehouseLng: Number(e.target.value)})} className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 text-xs border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none font-mono" />
             </div>
           </div>
+
+          <button onClick={handleUseCurrentLocation} disabled={locating} className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs font-bold transition disabled:opacity-50">
+            {locating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MapPin className="w-3.5 h-3.5" />}
+            {locating ? "Fetching location..." : "Use Current Location"}
+          </button>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-1.5">
