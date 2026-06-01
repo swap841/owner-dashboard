@@ -10,7 +10,6 @@ import {
   query,
   writeBatch,
   where,
-  orderBy,
 } from "firebase/firestore";
 import { app } from "../firebaseConfig";
 import { Order, DeliveryBoy } from "../types";
@@ -72,8 +71,8 @@ export default function BasketManagementView() {
     setLoading(true);
     try {
       const [basketSnap, boySnap, ordersSnap] = await Promise.all([
-        getDocs(query(collectionGroup(db, "basket"), orderBy("name"))),
-        getDocs(query(collection(db, "deliveryBoys"), orderBy("name"))),
+        getDocs(query(collectionGroup(db, "basket"))),
+        getDocs(query(collection(db, "deliveryBoys"))),
         getDocs(
           query(
             collectionGroup(db, "orders"),
@@ -84,8 +83,7 @@ export default function BasketManagementView() {
               "Out for Delivery",
               "Delivered",
               "Completed",
-            ]),
-            orderBy("createdAt", "desc")
+            ])
           )
         ),
       ]);
@@ -96,6 +94,7 @@ export default function BasketManagementView() {
         boyMap[d.id] = d.data().name || "Unknown";
         boys.push({ id: d.id, ...(d.data() as any) });
       });
+      boys.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
       setDeliveryBoys(boys);
 
       const items: { dboyId: string; data: BasketItemData }[] = [];
@@ -114,6 +113,7 @@ export default function BasketManagementView() {
           },
         });
       });
+      items.sort((a, b) => (a.data.customerName || "").localeCompare(b.data.customerName || ""));
       setBasketItems(items);
 
       const orders: Order[] = [];
@@ -152,6 +152,11 @@ export default function BasketManagementView() {
           outOfCity: !!data.outOfCity,
           rejectionHistory: data.rejectionHistory || [],
         });
+      });
+      orders.sort((a, b) => {
+        const da = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+        const db = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+        return db.getTime() - da.getTime();
       });
       setAllOrders(orders);
     } catch (err) {
