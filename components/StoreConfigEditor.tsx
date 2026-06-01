@@ -10,6 +10,7 @@ interface AppConfig {
   features: Record<string, any>;
   seo: Record<string, any>;
   contact: Record<string, any>;
+  ai: Record<string, any>;
 }
 
 export default function StoreConfigEditor() {
@@ -36,6 +37,7 @@ export default function StoreConfigEditor() {
           features: { voiceSearch: true, wishlist: true, coupons: true, reviews: true, chatbot: true, loyalty: false },
           seo: { metaTitle: "", metaDescription: "" },
           contact: { phone: "", email: "", address: "" },
+          ai: { geminiApiKey: "" },
         });
       }
     } catch (err) {
@@ -270,6 +272,15 @@ export default function StoreConfigEditor() {
                   className="w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none" />
               </div>
             ))}
+          </div>
+          <div className="border border-zinc-200 rounded-2xl bg-white p-6 space-y-4 shadow-xs">
+            <h2 className="text-sm font-bold text-zinc-800">AI / Chatbot</h2>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500">Gemini API Key</label>
+              <input type="password" value={config.ai?.geminiApiKey || ""} onChange={e => updateNested("ai", "geminiApiKey", e.target.value)}
+                className="w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none" placeholder="Enter your Google Gemini API key" />
+              <p className="text-[10px] text-zinc-400 mt-1">Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" className="text-emerald-600 hover:underline">aistudio.google.com/apikey</a></p>
+            </div>
           </div>
         </div>
 
