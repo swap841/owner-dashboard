@@ -24,6 +24,7 @@ export default function DeliveryBoyForm({ boy, onSave, onClose }: DeliveryBoyFor
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [active, setActive] = useState(true);
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [salary, setSalary] = useState(0);
@@ -42,6 +43,7 @@ export default function DeliveryBoyForm({ boy, onSave, onClose }: DeliveryBoyFor
     if (boy) {
       setName(boy.name);
       setPhone(boy.phone);
+      setEmail(boy.email || "");
       setActive(boy.active);
       setVehicleNumber(boy.vehicleNumber || "");
       setSalary(boy.salary || 0);
@@ -59,6 +61,7 @@ export default function DeliveryBoyForm({ boy, onSave, onClose }: DeliveryBoyFor
       await onSave({
         name: name.trim(),
         phone: phone.trim(),
+        email: email.trim() || undefined,
         vehicleNumber: vehicleNumber.trim(),
         fcmToken: boy?.fcmToken || "",
         active,
@@ -122,6 +125,19 @@ export default function DeliveryBoyForm({ boy, onSave, onClose }: DeliveryBoyFor
               maxLength={10}
               className="w-full px-3.5 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold"
               placeholder="e.g. 9876543210"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
+              Email (for Google Sign-In)
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3.5 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold"
+              placeholder="e.g. driver@gmail.com"
             />
           </div>
 

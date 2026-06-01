@@ -33,6 +33,7 @@ import {
   IndianRupee,  // Fixed missing imports
   CreditCard,   // Fixed missing imports
   Truck,        // Fixed missing imports
+  BarChart3,
 } from "lucide-react";
 
 // Components
@@ -51,6 +52,8 @@ import ContactsManager from "@/components/ContactsManager";
 import ContactInfoEditor from "@/components/ContactInfoEditor";
 import CouponsManager from "@/components/CouponsManager";
 import EarningsAnalyticsView from "@/components/EarningsAnalyticsView";
+import EmployeeProgressModal from "@/components/EmployeeProgressModal";
+import DeliveryPartnerManager from "@/components/DeliveryPartnerManager";
 
 // Hooks
 import { useProducts } from "@/hooks/useProducts";
@@ -150,13 +153,7 @@ function DashboardContent() {
   const [activeCategoryModal, setActiveCategoryModal] = useState<Category | null | "new">(null);
   const [activeDboyModal, setActiveDboyModal] = useState<DeliveryBoy | null | "new">(null);
   const [activeRefundModal, setActiveRefundModal] = useState<Order | null>(null);
-
-  // Settings
-  const [deliveryRadius, setDeliveryRadius] = useState<number>(20); // default 20km
-
-  // Partner shipment dispatch state
-  const [partnerLogs, setPartnerLogs] = useState<any[]>([]);
-  const [partnerLogsLoading, setPartnerLogsLoading] = useState(false);
+  const [progressBoy, setProgressBoy] = useState<DeliveryBoy | null>(null);
 
   // Auto-refresh control for order list
   const [autoRefreshOrders, setAutoRefreshOrders] = useState(true);
@@ -230,31 +227,6 @@ function DashboardContent() {
     toast.success("Products catalog exported successfully!");
   };
 
-  // Load Third-Party Delivery Partner logs
-  const fetchPartnerLogs = async () => {
-    setPartnerLogsLoading(true);
-    try {
-      const snap = await fetch("/api/delivery-partner/request");
-      // Since it's mock, we will just read from logs or simulate.
-      // For dashboard visual display, we also query firestore collection delivery_partner_logs
-      // directly. Let's implement local dummy data if API returns empty.
-      const dLogs = [
-        { id: "log-1", orderId: "ord-test1", partner: "dunzo", status: "delivered", trackingId: "DZ-J8HNS82", createdAt: new Date(Date.now() - 3600 * 1000) },
-        { id: "log-2", orderId: "ord-test2", partner: "shiprocket", status: "picked_up", trackingId: "SR-98YHN81", createdAt: new Date(Date.now() - 2 * 3600 * 1000) }
-      ];
-      setPartnerLogs(dLogs);
-    } catch {
-      // ignore
-    }
-    setPartnerLogsLoading(false);
-  };
-
-  useEffect(() => {
-    if (currentView === "deliveryPartner") {
-      fetchPartnerLogs();
-    }
-  }, [currentView]);
-
   if (checkingAuth) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
@@ -283,7 +255,7 @@ function DashboardContent() {
             🏠 VIEW: Dashboard Home
             ==================================================================== */}
         {currentView === "home" && (
-          <DashboardHomeView />
+          <DashboardHomeView onNavigate={(view) => setCurrentView(view as DashboardView)} />
         )}
 
         {/* ====================================================================
@@ -722,6 +694,12 @@ function DashboardContent() {
                           Edit Profile
                         </button>
                         <button
+                          onClick={() => setProgressBoy(boy)}
+                          className="px-3 py-1 border border-zinc-200 dark:border-zinc-855 hover:border-blue-500 rounded-lg text-xs font-bold hover:text-blue-500 transition"
+                        >
+                          <BarChart3 className="w-3 h-3 inline mr-1" /> Progress
+                        </button>
+                        <button
                           onClick={() => {
                             if (confirm(`Delete delivery boy profile for ${boy.name}?`)) {
                               deleteDeliveryBoy(boy.id!);
@@ -1070,230 +1048,9 @@ function DashboardContent() {
             🚚 VIEW: Delivery Partner (Out-Of-City Radius Dispatcher)
             ==================================================================== */}
         {currentView === "deliveryPartner" && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent flex items-center gap-1.5">
-                  <Truck className="w-6 h-6 text-emerald-500 shrink-0" />
-                  <span>Third-Party Delivery Partner</span>
-                </h1>
-                <p className="text-xs text-zinc-400 font-medium mt-1">
-                  Assign distant out-of-city orders exceeding our local delivery radius to third-party shipping aggregators.
-                </p>
-              </div>
-
-              {/* Radius Configuration */}
-              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 rounded-2xl flex items-center gap-3 shrink-0">
-                <Sliders className="w-4 h-4 text-zinc-400" />
-                <div className="flex flex-col text-xs font-bold">
-                  <span className="text-[10px] text-zinc-400">Local Service Radius</span>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <input
-                      type="number"
-                      value={deliveryRadius}
-                      onChange={(e) => setDeliveryRadius(Math.max(1, Number(e.target.value)))}
-                      className="w-12 text-center py-0.5 border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs font-black rounded"
-                    />
-                    <span className="text-zinc-500">km</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Distance dispatch queue */}
-            <div className="space-y-4">
-              <h3 className="font-extrabold text-zinc-900 dark:text-white text-base">Out-of-Radius Shipment Queue</h3>
-              {(() => {
-                const outOfRadiusOrders = allOrders
-                  .filter((o: Order) => o.status === "Ready to Dispatch" && !o.assignedDeliveryBoyId)
-                  .map((o: Order) => {
-                    // Simulating a dummy estimated distance based on pincode or length of address
-                    const mockDistance = ((o.address?.addressLine?.length || 0) % 25) + 8; // returns between 8 and 33
-                    return { ...o, estimatedDistance: mockDistance };
-                  });
-
-                if (outOfRadiusOrders.length === 0) {
-                  return (
-                    <div className="border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl py-12 flex flex-col items-center justify-center bg-white/50 dark:bg-zinc-900/10">
-                      <Truck className="w-12 h-12 text-zinc-400 mb-3" />
-                      <span className="text-zinc-955 dark:text-white font-bold">Queue is empty</span>
-                      <p className="text-xs text-zinc-400 mt-1 max-w-sm text-center">
-                        Active "Ready to Dispatch" orders will show up here if their estimated distance exceeds the {deliveryRadius}km boundary.
-                      </p>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden shadow-xs">
-                    <table className="w-full text-xs text-left border-collapse">
-                      <thead className="bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-800/80 text-zinc-500 font-bold">
-                        <tr>
-                          <th className="p-3">Order ID</th>
-                          <th className="p-3">Delivery Address</th>
-                          <th className="p-3">Estimated Distance</th>
-                          <th className="p-3">Weight</th>
-                          <th className="p-3 text-center">Dispatch</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-100 dark:divide-zinc-855 font-semibold text-zinc-700 dark:text-zinc-300">
-                        {outOfRadiusOrders.map((o: any) => {
-                          const exceedsRadius = o.estimatedDistance > deliveryRadius;
-                          return (
-                            <tr key={o.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30">
-                              <td className="p-3 font-bold text-zinc-900 dark:text-white">
-                                {o.id?.substring(0, 12)}...
-                              </td>
-                              <td className="p-3 font-medium max-w-[200px] truncate">{o.address?.addressLine || ""}</td>
-                              <td className="p-3">
-                                <span className={`font-extrabold ${exceedsRadius ? "text-amber-500" : "text-zinc-500"}`}>
-                                  {o.estimatedDistance.toFixed(1)} km
-                                </span>
-                                {exceedsRadius && (
-                                  <span className="ml-2 text-[9px] bg-amber-500/10 border border-amber-500/20 text-amber-500 px-1 py-0.2 rounded font-black uppercase">
-                                    OUT OF RANGE
-                                  </span>
-                                )}
-                              </td>
-                              <td className="p-3 font-extrabold text-zinc-400">
-                                {(o.totalWeight / 1000).toFixed(2)} kg
-                              </td>
-                              <td className="p-3 text-center">
-                                <div className="flex gap-1 justify-center">
-                                  <button
-                                    onClick={async () => {
-                                      const toastId = toast.loading("Connecting to Shiprocket API logs...");
-                                      try {
-                                        const response = await fetch("/api/delivery-partner/request", {
-                                          method: "POST",
-                                          headers: { "Content-Type": "application/json" },
-                                          body: JSON.stringify({ orderId: o.id, partner: "shiprocket" }),
-                                        });
-
-                                        if (!response.ok) throw new Error("API call failed");
-
-                                        const data = await response.json();
-                                        // Update order status to assigned/dispatched
-                                        await updateOrderStatus({
-                                          userId: o.userId,
-                                          orderId: o.id!,
-                                          status: "Assigned",
-                                          extraFields: {
-                                            assignedDeliveryBoyId: "third_party",
-                                          }
-                                        });
-
-                                        toast.success(
-                                          `Dispatched via Shiprocket! Tracking ID: ${data.trackingId}`,
-                                          { id: toastId, duration: 5000 }
-                                        );
-                                        fetchPartnerLogs();
-                                      } catch (err: any) {
-                                        toast.error(err.message || "Failed to delegate.", { id: toastId });
-                                      }
-                                    }}
-                                    className="px-2 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-bold text-[9px] transition"
-                                  >
-                                    Shiprocket
-                                  </button>
-                                  <button
-                                    onClick={async () => {
-                                      const toastId = toast.loading("Sending request Dunzo logistics...");
-                                      try {
-                                        const response = await fetch("/api/delivery-partner/request", {
-                                          method: "POST",
-                                          headers: { "Content-Type": "application/json" },
-                                          body: JSON.stringify({ orderId: o.id, partner: "dunzo" }),
-                                        });
-
-                                        if (!response.ok) throw new Error("API call failed");
-
-                                        const data = await response.json();
-                                        await updateOrderStatus({
-                                          userId: o.userId,
-                                          orderId: o.id!,
-                                          status: "Assigned",
-                                          extraFields: {
-                                            assignedDeliveryBoyId: "third_party",
-                                          }
-                                        });
-
-                                        toast.success(
-                                          `Assigned to Dunzo! Tracking: ${data.trackingId}`,
-                                          { id: toastId, duration: 5000 }
-                                        );
-                                        fetchPartnerLogs();
-                                      } catch (err: any) {
-                                        toast.error(err.message || "Failed to delegate.", { id: toastId });
-                                      }
-                                    }}
-                                    className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[9px] transition"
-                                  >
-                                    Dunzo
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Partner Tracking Logs */}
-            <div className="space-y-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-              <h3 className="font-extrabold text-zinc-900 dark:text-white text-base">Delegation logs timeline</h3>
-              {partnerLogsLoading ? (
-                <Loader2 className="w-5 h-5 text-emerald-500 animate-spin" />
-              ) : partnerLogs.length === 0 ? (
-                <span className="text-xs text-zinc-400 font-semibold italic">No partner shipments processed today.</span>
-              ) : (
-                <div className="space-y-2.5">
-                  {partnerLogs.map((log: any) => (
-                    <div
-                      key={log.id}
-                      className="bg-white dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800/80 p-3 rounded-xl flex items-center justify-between text-xs font-semibold"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-zinc-500">
-                          {log.partner[0].toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="text-zinc-900 dark:text-white font-bold">
-                            Order Ref: {log.orderId}
-                          </p>
-                          <span className="text-[10px] text-zinc-400 font-bold">
-                            Tracking: <strong className="text-teal-500">{log.trackingId}</strong> • {log.partner}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <span className="text-[9px] font-black uppercase bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-2 py-0.5 rounded-full">
-                          {log.status}
-                        </span>
-                        <select
-                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                            toast.success(`Mock partner log status updated to ${e.target.value}`);
-                          }}
-                          className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded text-[10px] font-bold"
-                        >
-                          <option value="">Update Status</option>
-                          <option value="picked_up">Picked Up</option>
-                          <option value="delivered">Delivered</option>
-                          <option value="failed">Failed</option>
-                        </select>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <DeliveryPartnerManager />
         )}
+
       </main>
 
       {/* ====================================================================
@@ -1355,22 +1112,35 @@ function DashboardContent() {
             if (isRazorpay) {
               await processRazorpayRefund(payload);
             } else {
-              // Manual record logging for COD
               await recordManualRefund({
                 orderId: payload.orderId,
                 amount: payload.amount,
                 reason: payload.reason,
                 razorpayRefundId: "manual_" + Date.now(),
               });
-              // Mark order status unpaid/cancelled
               await updateOrderStatus({
                 userId: payload.userId,
                 orderId: payload.orderId,
                 status: "Cancelled",
-                extraFields: { payment: { method: "cod", status: "refunded" } }
+                extraFields: { cancelledAt: new Date().toISOString(), cancelReason: "Refunded" },
               });
             }
+            setActiveRefundModal(null);
           }}
+        />
+      )}
+
+      {progressBoy && (
+        <EmployeeProgressModal
+          employeeId={progressBoy.id!}
+          name={progressBoy.name}
+          phone={progressBoy.phone}
+          salary={progressBoy.salary || 0}
+          role="deliveryBoy"
+          totalEarnings={progressBoy.totalEarnings || 0}
+          existingBonuses={progressBoy.bonuses}
+          overtimeHours={progressBoy.overtimeHours}
+          onClose={() => setProgressBoy(null)}
         />
       )}
 

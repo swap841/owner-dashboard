@@ -106,11 +106,20 @@ export interface Ticket {
   replies?: TicketReply[];
 }
 
+export interface BonusEntry {
+  type: "diwali" | "performance" | "overtime" | "other";
+  amount: number;
+  reason: string;
+  date: Timestamp | any;
+  month: string;
+}
+
 export interface Worker {
   id?: string;
   name: string;
   phone: string;
-  fcmToken: string;
+  email?: string;
+  fcmToken?: string;
   active: boolean;
   salary: number;
   joiningDate: Timestamp | any;
@@ -118,6 +127,8 @@ export interface Worker {
   holidays: { date: Timestamp | any; reason: string }[];
   totalEarnings: number;
   currentPackingOrderId?: string;
+  bonuses?: BonusEntry[];
+  overtimeHours?: number;
 }
 
 export interface SalaryPayment {
@@ -132,8 +143,9 @@ export interface DeliveryBoy {
   id?: string;
   name: string;
   phone: string;
+  email?: string;
   vehicleNumber: string;
-  fcmToken: string;
+  fcmToken?: string;
   active: boolean;
   salary: number;
   joiningDate: Timestamp | any;
@@ -143,6 +155,8 @@ export interface DeliveryBoy {
   breakLogs: { start: Timestamp | any; end?: Timestamp | any }[];
   currentBreakStart?: Timestamp | any;
   basket?: BasketItem[];
+  bonuses?: BonusEntry[];
+  overtimeHours?: number;
 }
 
 export interface BasketItem {

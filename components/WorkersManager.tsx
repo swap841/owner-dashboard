@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { Loader2, Plus, Edit, Trash, Users, IndianRupee, UserCheck, ChevronDown, ChevronUp, Calendar, Clock } from "lucide-react";
+import { Loader2, Plus, Edit, Trash, Users, IndianRupee, UserCheck, ChevronDown, ChevronUp, Calendar, Clock, BarChart3 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWorkers } from "@/hooks/useWorkers";
 import { Worker, SalaryPayment } from "@/types";
 import { getSalaryPayments } from "@/lib/firestore/salaryPayments";
 import SalaryPaymentModal from "./SalaryPaymentModal";
+import EmployeeProgressModal from "./EmployeeProgressModal";
 
 function formatDate(ts: any): string {
   if (!ts) return "—";
@@ -19,10 +20,11 @@ export default function WorkersManager() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
-  const [form, setForm] = useState({ name: "", phone: "", fcmToken: "", salary: 0, active: true });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", salary: 0, active: true });
   const [saving, setSaving] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [payingWorker, setPayingWorker] = useState<Worker | null>(null);
+  const [progressWorker, setProgressWorker] = useState<Worker | null>(null);
 
   const expandedPayments = useQuery<SalaryPayment[], Error>({
     queryKey: ["salaryPayments", "workers", expandedId],
@@ -31,7 +33,7 @@ export default function WorkersManager() {
   });
 
   const resetForm = () => {
-    setForm({ name: "", phone: "", fcmToken: "", salary: 0, active: true });
+    setForm({ name: "", phone: "", email: "", salary: 0, active: true });
     setEditingWorker(null);
     setShowForm(false);
   };
@@ -43,7 +45,7 @@ export default function WorkersManager() {
       if (editingWorker) {
         await updateWorker({ id: editingWorker.id!, updates: form });
       } else {
-        await createWorker({ ...form, joiningDate: new Date(), totalEarnings: 0, incrementHistory: [], holidays: [] });
+        await createWorker({ ...form, joiningDate: new Date(), totalEarnings: 0, incrementHistory: [], holidays: [], bonuses: [], overtimeHours: 0 });
       }
       resetForm();
     } catch {}
@@ -51,7 +53,7 @@ export default function WorkersManager() {
   };
 
   const handleEdit = (w: Worker) => {
-    setForm({ name: w.name, phone: w.phone, fcmToken: w.fcmToken, salary: w.salary, active: w.active });
+    setForm({ name: w.name, phone: w.phone, email: w.email || "", salary: w.salary, active: w.active });
     setEditingWorker(w);
     setShowForm(true);
   };
@@ -78,7 +80,7 @@ export default function WorkersManager() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input placeholder="Name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="px-3 py-2 bg-zinc-50 dark:bg-zinc-800 text-xs border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 font-medium" />
             <input placeholder="Phone" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="px-3 py-2 bg-zinc-50 dark:bg-zinc-800 text-xs border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 font-medium" />
-            <input placeholder="FCM Token" value={form.fcmToken} onChange={e => setForm({...form, fcmToken: e.target.value})} className="px-3 py-2 bg-zinc-50 dark:bg-zinc-800 text-xs border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 font-medium" />
+            <input placeholder="Email (for Google Sign-In)" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="px-3 py-2 bg-zinc-50 dark:bg-zinc-800 text-xs border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 font-medium" />
             <div className="relative">
               <IndianRupee className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
               <input type="number" placeholder="Monthly Salary" value={form.salary || ""} onChange={e => setForm({...form, salary: Number(e.target.value)})} className="w-full pl-8 pr-3 py-2 bg-zinc-50 dark:bg-zinc-800 text-xs border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 font-medium" />
@@ -134,6 +136,7 @@ export default function WorkersManager() {
                   <IndianRupee className="w-3 h-3" /> Pay Salary
                 </button>
                 <button onClick={() => handleEdit(w)} className="p-1.5 border border-zinc-200 dark:border-zinc-800 hover:border-orange-500 rounded-lg hover:text-orange-500 transition"><Edit className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setProgressWorker(w)} className="p-1.5 border border-zinc-200 dark:border-zinc-800 hover:border-blue-500 rounded-lg hover:text-blue-500 transition" title="Monthly Progress"><BarChart3 className="w-3.5 h-3.5" /></button>
                 <button onClick={() => { if (confirm(`Delete ${w.name}?`)) { deleteWorker(w.id!); } }} className="p-1.5 border border-zinc-200 dark:border-zinc-800 hover:border-rose-500 rounded-lg hover:text-rose-500 transition"><Trash className="w-3.5 h-3.5" /></button>
                 <button
                   onClick={() => setExpandedId(expandedId === w.id ? null : w.id!)}
@@ -230,6 +233,20 @@ export default function WorkersManager() {
               queryClient.invalidateQueries({ queryKey: ["salaryPayments", "workers", payingWorker.id] });
             }
           }}
+        />
+      )}
+
+      {progressWorker && (
+        <EmployeeProgressModal
+          employeeId={progressWorker.id!}
+          name={progressWorker.name}
+          phone={progressWorker.phone}
+          salary={progressWorker.salary}
+          role="worker"
+          totalEarnings={progressWorker.totalEarnings || 0}
+          existingBonuses={progressWorker.bonuses}
+          overtimeHours={progressWorker.overtimeHours}
+          onClose={() => setProgressWorker(null)}
         />
       )}
     </div>

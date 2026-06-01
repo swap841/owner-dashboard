@@ -44,6 +44,7 @@ export async function getDeliveryBoys(): Promise<DeliveryBoy[]> {
       id: dboyId,
       name: data.name || "",
       phone: data.phone || "",
+      email: data.email || "",
       vehicleNumber: data.vehicleNumber || "",
       fcmToken: data.fcmToken || "",
       active: data.active ?? true,
@@ -67,6 +68,7 @@ export async function createDeliveryBoy(boy: Omit<DeliveryBoy, "id" | "basket">)
   const payload = {
     name: boy.name,
     phone: boy.phone,
+    email: boy.email || "",
     vehicleNumber: boy.vehicleNumber || "",
     fcmToken: boy.fcmToken || "",
     active: boy.active,
