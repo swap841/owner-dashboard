@@ -145,7 +145,7 @@ export default function Sidebar({ currentView, onViewChange, ownerName }: Sideba
                     onViewChange(item.id);
                     setIsOpen(false);
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 border group
+                  className={`w-full flex items-center gap-3 px-3 py-3 md:py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 border group
                   ${
                     isActive
                       ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 shadow-xs"

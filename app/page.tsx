@@ -9,7 +9,8 @@ import {
     signUpOwnerWithEmail, 
     getCurrentUser, 
     isCurrentUserOwner,
-    onAuthStateChange  // Add this import
+    saveOwnerDetailsToDB,
+    onAuthStateChange
 } from '@/src/ownerUtils'; 
 
 export default function OwnerLoginPage() {
@@ -28,7 +29,10 @@ export default function OwnerLoginPage() {
                 const user = getCurrentUser();
                 
                 if (user) {
-                    // User is logged in, verify if they are an owner
+                    // Ensure owners doc exists (for users who signed in before rules fix)
+                    await saveOwnerDetailsToDB(user).catch(console.error);
+                    
+                    // Verify if they are an owner
                     const isOwner = await isCurrentUserOwner();
                     
                     if (isOwner) {
@@ -55,6 +59,8 @@ export default function OwnerLoginPage() {
         // Set up the auth state listener
         const unsubscribe = onAuthStateChange(async (user) => {
             if (user) {
+                // Ensure owners doc exists (for users who signed in before rules fix)
+                await saveOwnerDetailsToDB(user).catch(console.error);
                 const isOwner = await isCurrentUserOwner();
                 if (isOwner) {
                     router.push('/dashboard');

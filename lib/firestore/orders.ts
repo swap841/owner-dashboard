@@ -12,9 +12,7 @@ import {
   updateDoc,
   query,
   where,
-  orderBy,
   limit,
-  startAfter,
   runTransaction,
   writeBatch,
   serverTimestamp,
@@ -94,30 +92,26 @@ export async function getActiveOrders(
     "Out for Delivery",
   ];
 
-  let q = query(
+  // No orderBy to avoid composite index requirement on collectionGroup
+  const q = query(
     collectionGroup(db, "orders"),
     where("status", "in", activeStatuses),
-    orderBy("createdAt", "desc"),
     limit(limitSize)
   );
-
-  if (lastVisibleDoc) {
-    q = query(
-      collectionGroup(db, "orders"),
-      where("status", "in", activeStatuses),
-      orderBy("createdAt", "desc"),
-      startAfter(lastVisibleDoc),
-      limit(limitSize)
-    );
-  }
 
   const snap = await getDocs(q);
   const orders: Order[] = [];
 
   snap.docs.forEach((d) => {
-    // collectionGroup doc path is: users/{userId}/orders/{orderId}
     const userId = d.ref.parent.parent?.id || "N/A";
     orders.push(normalizeOrder(d.id, userId, d.data()));
+  });
+
+  // Sort client-side by createdAt descending
+  orders.sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return dateB - dateA;
   });
 
   const lastVisible = snap.docs.length > 0 ? snap.docs[snap.docs.length - 1] : null;
@@ -134,12 +128,20 @@ export async function getActiveOrders(
  * Fetches ALL orders across the database, optionally filtered by status (unpaginated/paginated helper for analytics).
  */
 export async function getAllOrdersGroup(): Promise<Order[]> {
-  const q = query(collectionGroup(db, "orders"), orderBy("createdAt", "desc"));
+  // No orderBy to avoid composite index requirement on collectionGroup
+  const q = query(collectionGroup(db, "orders"));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => {
+  const orders = snap.docs.map((d) => {
     const userId = d.ref.parent.parent?.id || "N/A";
     return normalizeOrder(d.id, userId, d.data());
   });
+  // Sort client-side by createdAt descending
+  orders.sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return dateB - dateA;
+  });
+  return orders;
 }
 
 /**

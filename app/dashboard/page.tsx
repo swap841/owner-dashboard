@@ -63,6 +63,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { useOrders } from "@/hooks/useOrders";
 import { useDeliveryBoys } from "@/hooks/useDeliveryBoys";
 import { useRefunds } from "@/hooks/useRefunds";
+import { saveOwnerDetailsToDB } from "@/src/ownerUtils";
 
 // Types
 import { Product, Category, Order, DeliveryBoy, Refund, OrderStatus } from "@/types";
@@ -105,12 +106,14 @@ function DashboardContent() {
 
   // Authentication observer
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
         toast.error("Please sign in to access the owner portal.");
         router.push("/");
       } else {
+        await saveOwnerDetailsToDB(currentUser).catch(console.error);
         setUser(currentUser);
+        queryClient.invalidateQueries();
       }
       setCheckingAuth(false);
     });
@@ -273,7 +276,7 @@ function DashboardContent() {
         ownerName={user?.displayName || user?.email}
       />
 
-      <main className="flex-1 p-4 md:p-8 space-y-6 overflow-hidden w-full max-w-7xl mx-auto pt-20 md:pt-8">
+      <main className="flex-1 p-4 md:p-8 space-y-6 overflow-x-hidden w-full max-w-7xl mx-auto pt-20 md:pt-8">
         {/* ====================================================================
             🏠 VIEW: Dashboard Home
             ==================================================================== */}

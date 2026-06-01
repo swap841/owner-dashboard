@@ -1,7 +1,7 @@
 // hooks/useEarnings.ts
 
 import { useQuery } from "@tanstack/react-query";
-import { collectionGroup, collection, getDocs, getFirestore, query, orderBy } from "firebase/firestore";
+import { collectionGroup, collection, getDocs, getFirestore, query } from "firebase/firestore";
 import { app } from "../firebaseConfig";
 
 const db = getFirestore(app);
@@ -66,7 +66,7 @@ export function useEarnings() {
     queryKey: ["earnings"],
     queryFn: async () => {
       const [ordersSnap, workersSnap, boysSnap] = await Promise.all([
-        getDocs(query(collectionGroup(db, "orders"), orderBy("createdAt", "desc"))),
+        getDocs(query(collectionGroup(db, "orders"))),
         getDocs(collection(db, "workers")),
         getDocs(collection(db, "deliveryBoys")),
       ]);
