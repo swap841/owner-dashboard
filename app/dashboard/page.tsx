@@ -55,6 +55,7 @@ import EarningsAnalyticsView from "@/components/EarningsAnalyticsView";
 import EmployeeProgressModal from "@/components/EmployeeProgressModal";
 import DeliveryPartnerManager from "@/components/DeliveryPartnerManager";
 import StoreConfigEditor from "@/components/StoreConfigEditor";
+import PolicyEditor from "@/components/PolicyEditor";
 
 // Hooks
 import { useProducts } from "@/hooks/useProducts";
@@ -1126,6 +1127,13 @@ function DashboardContent() {
         {currentView === "deliveryPartner" && (
           <DeliveryPartnerManager />
         )}
+
+        {/* Policy Pages */}
+        {currentView === "policyShipping" && <PolicyEditor policyType="shipping" />}
+        {currentView === "policyRefund" && <PolicyEditor policyType="refund" />}
+        {currentView === "policyPrivacy" && <PolicyEditor policyType="privacy" />}
+        {currentView === "policyTerms" && <PolicyEditor policyType="terms" />}
+        {currentView === "policyContact" && <PolicyEditor policyType="contact" />}
 
       </main>
 

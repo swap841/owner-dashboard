@@ -69,6 +69,21 @@ export default function StoreConfigEditor() {
     }
   };
 
+  const refreshCache = async () => {
+    try {
+      const res = await fetch(`${serverUrl}/api/invalidate-cache`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Cache cleared! Website will show new settings.");
+      }
+    } catch {
+      toast.error("Failed to clear cache");
+    }
+  };
+
   const updateNested = (section: string, key: string, value: any) => {
     if (!config) return;
     setConfig({ ...config, [section]: { ...config[section as keyof AppConfig], [key]: value } });
@@ -100,8 +115,8 @@ export default function StoreConfigEditor() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={fetchConfig} className="px-4 py-2 rounded-xl border border-zinc-200 text-sm font-semibold hover:bg-zinc-50 transition flex items-center gap-2">
-            <RefreshCw className="w-4 h-4" /> Refresh
+          <button onClick={() => { fetchConfig(); refreshCache(); }} className="px-4 py-2 rounded-xl border border-zinc-200 text-sm font-semibold hover:bg-zinc-50 transition flex items-center gap-2">
+            <RefreshCw className="w-4 h-4" /> Refresh & Clear Cache
           </button>
           <button onClick={handleSave} disabled={saving}
             className="px-6 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-sm font-bold shadow-md hover:shadow-lg transition disabled:opacity-50 flex items-center gap-2">
@@ -177,6 +192,44 @@ export default function StoreConfigEditor() {
                 className="w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none" />
             </div>
           ))}
+
+          <div className="border-t border-zinc-100 pt-4 mt-2">
+            <h3 className="text-xs font-bold text-zinc-700 mb-3">Shop Location</h3>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500">Address</label>
+              <input type="text" value={config.store.location?.address || ""} onChange={e => updateNested("store", "location", { ...config.store.location, address: e.target.value })}
+                className="w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none" placeholder="Shop address" />
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div>
+                <label className="text-xs font-semibold text-zinc-500">Latitude</label>
+                <input type="number" step="any" value={config.store.location?.lat || ""} onChange={e => updateNested("store", "location", { ...config.store.location, lat: parseFloat(e.target.value) || 0 })}
+                  className="w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-zinc-500">Longitude</label>
+                <input type="number" step="any" value={config.store.location?.lng || ""} onChange={e => updateNested("store", "location", { ...config.store.location, lng: parseFloat(e.target.value) || 0 })}
+                  className="w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none" />
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                if (typeof navigator !== "undefined" && navigator.geolocation) {
+                  navigator.geolocation.getCurrentPosition((pos) => {
+                    updateNested("store", "location", {
+                      ...config.store.location,
+                      lat: pos.coords.latitude,
+                      lng: pos.coords.longitude,
+                    });
+                    toast.success("Current location set!");
+                  }, () => toast.error("Failed to get location"));
+                }
+              }}
+              className="mt-3 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded-xl transition flex items-center gap-1"
+            >
+              📍 Use Current Location
+            </button>
+          </div>
         </div>
 
         {/* Features */}

@@ -22,6 +22,7 @@ import {
   Settings,
   MessageSquare,
   Percent,
+  FileText,
 } from "lucide-react";
 
 export type DashboardView =
@@ -41,7 +42,12 @@ export type DashboardView =
   | "tickets"
   | "contacts"
   | "storeConfig"
-  | "deliveryPartner";
+  | "deliveryPartner"
+  | "policyShipping"
+  | "policyRefund"
+  | "policyPrivacy"
+  | "policyTerms"
+  | "policyContact";
 
 interface SidebarProps {
   currentView: DashboardView;
@@ -70,6 +76,11 @@ export default function Sidebar({ currentView, onViewChange, ownerName }: Sideba
     { id: "refunds", label: "Refunds", icon: RotateCcw, color: "text-rose-500" },
     { id: "payments", label: "Transactions", icon: CreditCard, color: "text-sky-500" },
     { id: "deliveryPartner", label: "Delivery Partner", icon: Truck, color: "text-cyan-500" },
+    { id: "policyShipping", label: "Shipping Policy", icon: FileText, color: "text-emerald-500" },
+    { id: "policyRefund", label: "Refund Policy", icon: FileText, color: "text-emerald-500" },
+    { id: "policyPrivacy", label: "Privacy Policy", icon: FileText, color: "text-emerald-500" },
+    { id: "policyTerms", label: "Terms & Conditions", icon: FileText, color: "text-emerald-500" },
+    { id: "policyContact", label: "Contact Us", icon: FileText, color: "text-emerald-500" },
   ] as const;
 
   const toggleSidebar = () => setIsOpen(!isOpen);
