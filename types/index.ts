@@ -20,6 +20,7 @@ export interface Product {
   weight: number;
   unit: string;
   imageUrl: string;
+  images?: string[];
   categoryId: string;
   stock: number;
   lowStockThreshold: number;

@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from "react";
 import { Product, Category } from "../types";
 import { uploadToImgBB } from "../lib/imageUpload";
-import { X, Upload, Loader2 } from "lucide-react";
+import { X, Upload, Loader2, Plus, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface ProductFormProps {
@@ -24,7 +24,8 @@ export default function ProductForm({ product, categories, onSave, onClose }: Pr
   const [weight, setWeight] = useState<number>(100);
   const [unit, setUnit] = useState<string>("g");
   const [categoryId, setCategoryId] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [images, setImages] = useState<string[]>([]);
+  const [newImageUrl, setNewImageUrl] = useState("");
   const [rating, setRating] = useState<number>(0);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -39,7 +40,7 @@ export default function ProductForm({ product, categories, onSave, onClose }: Pr
       setWeight(product.weight ?? 100);
       setUnit(product.unit ?? "g");
       setCategoryId(product.categoryId ?? "");
-      setImageUrl(product.imageUrl ?? "");
+      setImages(product.images?.length ? product.images : product.imageUrl ? [product.imageUrl] : []);
       setRating(product.rating ?? 0);
     }
   }, [product]);
@@ -52,13 +53,34 @@ export default function ProductForm({ product, categories, onSave, onClose }: Pr
     const toastId = toast.loading("Uploading image to ImgBB...");
     try {
       const url = await uploadToImgBB(file);
-      setImageUrl(url);
+      setImages(prev => [...prev, url]);
       toast.success("Image uploaded successfully!", { id: toastId });
     } catch (err: any) {
       toast.error(err.message || "Failed to upload image.", { id: toastId });
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleAddImageUrl = () => {
+    const url = newImageUrl.trim();
+    if (!url) return;
+    setImages(prev => [...prev, url]);
+    setNewImageUrl("");
+  };
+
+  const handleRemoveImage = (idx: number) => {
+    setImages(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleMoveImage = (idx: number, direction: -1 | 1) => {
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= images.length) return;
+    setImages(prev => {
+      const next = [...prev];
+      [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
+      return next;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -81,7 +103,8 @@ export default function ProductForm({ product, categories, onSave, onClose }: Pr
         weight,
         unit,
         categoryId,
-        imageUrl: imageUrl.trim() || "/images/generic-product-image.png",
+        imageUrl: images[0]?.trim() || "/images/generic-product-image.png",
+        images,
         lowStockThreshold: 5,
         active: true,
       });
@@ -253,67 +276,58 @@ export default function ProductForm({ product, categories, onSave, onClose }: Pr
             />
           </div>
 
-          {/* Image Upload Block */}
-          <div className="border border-dashed border-zinc-200 dark:border-zinc-700 rounded-2xl p-4 flex flex-col items-center justify-center bg-zinc-50/50 dark:bg-zinc-800/10">
-            {imageUrl ? (
-              <div className="flex flex-col items-center gap-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={imageUrl}
-                  alt="Preview"
-                  className="w-24 h-24 object-cover rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-xs"
-                />
-                <button
-                  type="button"
-                  onClick={() => setImageUrl("")}
-                  className="text-xs font-bold text-rose-500 hover:underline"
-                >
-                  Remove & Upload New
-                </button>
-              </div>
-            ) : (
-              <div className="w-full flex flex-col items-center justify-center py-2">
-                <Upload className="w-8 h-8 text-zinc-400 mb-2" />
-                <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium text-center">
-                  Drag and drop or select an image file to upload to ImgBB
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageFileChange}
-                  disabled={uploading}
-                  className="hidden"
-                  id="image-file-picker"
-                />
-                <label
-                  htmlFor="image-file-picker"
-                  className="mt-3 px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold cursor-pointer transition flex items-center gap-1 shadow-sm"
-                >
-                  {uploading ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    "Upload Image"
-                  )}
-                </label>
-              </div>
-            )}
-          </div>
-
-          {/* Image URL fallback */}
+          {/* Multiple Images Upload Block */}
           <div>
             <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
-              Or Image URL
+              Product Images ({images.length})
             </label>
-            <input
-              type="text"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold text-xs"
-              placeholder="e.g. https://images.unsplash.com/... or upload above"
-            />
+            <div className="space-y-3">
+              {/* Image list with thumbnails */}
+              {images.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {images.map((url, idx) => (
+                    <div key={idx} className="relative group">
+                      <img src={url} alt="" className="w-20 h-20 object-cover rounded-xl border border-zinc-200 dark:border-zinc-700" />
+                      <div className="absolute inset-0 bg-black/50 rounded-xl opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1">
+                        <button type="button" onClick={() => handleMoveImage(idx, -1)} disabled={idx === 0}
+                          className="w-6 h-6 bg-white/80 rounded-full flex items-center justify-center text-zinc-700 hover:bg-white disabled:opacity-30 text-xs font-bold">&#8593;</button>
+                        <button type="button" onClick={() => handleMoveImage(idx, 1)} disabled={idx === images.length - 1}
+                          className="w-6 h-6 bg-white/80 rounded-full flex items-center justify-center text-zinc-700 hover:bg-white disabled:opacity-30 text-xs font-bold">&#8595;</button>
+                        <button type="button" onClick={() => handleRemoveImage(idx)}
+                          className="w-6 h-6 bg-red-500/80 rounded-full flex items-center justify-center text-white hover:bg-red-500">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                      {idx === 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full">Main</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload new image */}
+              <div className="border border-dashed border-zinc-200 dark:border-zinc-700 rounded-2xl p-4 flex flex-col items-center justify-center bg-zinc-50/50 dark:bg-zinc-800/10">
+                <Upload className="w-6 h-6 text-zinc-400 mb-1" />
+                <span className="text-[11px] text-zinc-500 font-medium text-center mb-2">Upload new image</span>
+                <input type="file" accept="image/*" onChange={handleImageFileChange} disabled={uploading} className="hidden" id="image-file-picker" />
+                <label htmlFor="image-file-picker" className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold cursor-pointer transition flex items-center gap-1 shadow-sm">
+                  {uploading ? <><Loader2 className="w-3 h-3 animate-spin" /> Uploading...</> : "Upload Image"}
+                </label>
+              </div>
+
+              {/* Add image URL */}
+              <div className="flex items-center gap-2">
+                <input type="text" value={newImageUrl} onChange={(e) => setNewImageUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddImageUrl()}
+                  className="flex-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-xs"
+                  placeholder="Or paste an image URL and press Enter" />
+                <button type="button" onClick={handleAddImageUrl}
+                  className="shrink-0 px-3 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl text-xs font-semibold text-zinc-600 dark:text-zinc-400 transition flex items-center gap-1">
+                  <Plus className="w-3 h-3" /> Add
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Footer Actions */}
