@@ -1,7 +1,7 @@
 // hooks/useProducts.ts
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getProducts, createProduct, updateProduct, deleteProduct, importProductsFromCSV } from "../lib/firestore/products";
+import { getProducts, createProduct, updateProduct, deleteProduct, archiveProduct, restoreProduct, getArchivedProducts, importProductsFromCSV } from "../lib/firestore/products";
 import { Product } from "../types";
 
 export function useProducts() {
@@ -33,16 +33,44 @@ export function useProducts() {
     },
   });
 
-  // 4. Delete Product Mutation
+  // 4. Delete / Archive Product Mutation (soft-delete)
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteProduct(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["archived-products"] });
       queryClient.invalidateQueries({ queryKey: ["categories"] });
     },
   });
 
-  // 5. CSV Import Mutation
+  // 5. Archive Product Mutation (explicit alias)
+  const archiveMutation = useMutation({
+    mutationFn: (id: string) => archiveProduct(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["archived-products"] });
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+    },
+  });
+
+  // 6. Restore Product Mutation
+  const restoreMutation = useMutation({
+    mutationFn: (id: string) => restoreProduct(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["archived-products"] });
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+    },
+  });
+
+  // 7. Archived Products Query
+  const archivedProductsQuery = useQuery<Product[], Error>({
+    queryKey: ["archived-products"],
+    queryFn: getArchivedProducts,
+    staleTime: 30000,
+  });
+
+  // 8. CSV Import Mutation
   const importCSVMutation = useMutation({
     mutationFn: (rows: Array<{
       name: string;
@@ -76,6 +104,15 @@ export function useProducts() {
 
     deleteProduct: deleteMutation.mutateAsync,
     isDeleting: deleteMutation.isPending,
+
+    archiveProduct: archiveMutation.mutateAsync,
+    isArchiving: archiveMutation.isPending,
+
+    restoreProduct: restoreMutation.mutateAsync,
+    isRestoring: restoreMutation.isPending,
+
+    archivedProducts: archivedProductsQuery.data || [],
+    isArchivedLoading: archivedProductsQuery.isLoading,
 
     importCSVProducts: importCSVMutation.mutateAsync,
     isImporting: importCSVMutation.isPending,

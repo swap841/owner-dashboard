@@ -1,7 +1,5 @@
 // lib/deliveryPartner.ts
 
-import { DeliveryPartnerLog } from "../types";
-
 /**
  * Simulates requesting a delivery partner for out-of-city orders.
  * Generates tracking logs and handles dunzo/shiprocket mock requests.

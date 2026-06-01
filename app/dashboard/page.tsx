@@ -33,6 +33,7 @@ import {
   IndianRupee,  // Fixed missing imports
   CreditCard,   // Fixed missing imports
   Truck,        // Fixed missing imports
+  Archive,      // Fixed missing imports
   BarChart3,
 } from "lucide-react";
 
@@ -49,11 +50,11 @@ import BasketManagementView from "@/components/BasketManagementView";
 import BannersManager from "@/components/BannersManager";
 import TicketsManager from "@/components/TicketsManager";
 import ContactsManager from "@/components/ContactsManager";
-import ContactInfoEditor from "@/components/ContactInfoEditor";
 import CouponsManager from "@/components/CouponsManager";
 import EarningsAnalyticsView from "@/components/EarningsAnalyticsView";
 import EmployeeProgressModal from "@/components/EmployeeProgressModal";
 import DeliveryPartnerManager from "@/components/DeliveryPartnerManager";
+import StoreConfigEditor from "@/components/StoreConfigEditor";
 
 // Hooks
 import { useProducts } from "@/hooks/useProducts";
@@ -65,10 +66,25 @@ import { useRefunds } from "@/hooks/useRefunds";
 // Types
 import { Product, Category, Order, DeliveryBoy, Refund, OrderStatus } from "@/types";
 import { exportProductsToCSV } from "@/lib/firestore/products";
-import { extractAreaCode } from "@/lib/areaCode";
 import { groupOrdersIntoBaskets, DeliveryBasket } from "@/lib/firestore/orders";
 
 const auth = getAuth(app);
+
+const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || "";
+const CACHE_CLEAR_KEY = process.env.NEXT_PUBLIC_CACHE_CLEAR_KEY || "";
+
+async function clearProductCache() {
+  try {
+    if (!SERVER_URL || !CACHE_CLEAR_KEY) return;
+    await fetch(`${SERVER_URL}/api/clear-cache`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: CACHE_CLEAR_KEY }),
+    });
+  } catch (err) {
+    console.warn("Cache clear failed (non-critical):", err);
+  }
+}
 
 // 1. Create a single stable Query Client
 const queryClient = new QueryClient({
@@ -107,6 +123,10 @@ function DashboardContent() {
     createProduct,
     updateProduct,
     deleteProduct,
+    archiveProduct,
+    restoreProduct,
+    archivedProducts,
+    isArchivedLoading,
     importCSVProducts,
   } = useProducts();
 
@@ -147,6 +167,7 @@ function DashboardContent() {
   // Search & Filter state
   const [productSearch, setProductSearch] = useState("");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   // Modals state
   const [activeProductModal, setActiveProductModal] = useState<Product | null | "new">(null);
@@ -200,6 +221,7 @@ function DashboardContent() {
           `Successfully imported ${result.importedCount} products and verified category denormalized counts!`,
           { id: toastId, duration: 5000 }
         );
+        clearProductCache();
       } catch (err: any) {
         toast.error(err.message || "Failed to process bulk import.", { id: toastId });
       }
@@ -263,9 +285,9 @@ function DashboardContent() {
             ==================================================================== */}
         {currentView === "products" && (
           <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 md:p-5 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm">
               <div>
-                <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-400 bg-clip-text text-transparent">
                   🛍️ Manage Products
                 </h1>
                 <p className="text-xs text-zinc-400 font-medium mt-1">
@@ -284,7 +306,7 @@ function DashboardContent() {
                 />
                 <label
                   htmlFor="csv-import-file"
-                  className="flex items-center gap-1.5 px-4 py-2 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 rounded-xl text-xs font-bold cursor-pointer transition"
+                  className="flex items-center gap-1.5 px-4 py-2 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-xl text-xs font-bold cursor-pointer transition shadow-sm hover:shadow-md"
                 >
                   <Upload className="w-3.5 h-3.5 text-zinc-400" />
                   <span>Bulk Import (CSV)</span>
@@ -293,7 +315,7 @@ function DashboardContent() {
                 {/* CSV Export */}
                 <button
                   onClick={handleCSVExport}
-                  className="flex items-center gap-1.5 px-4 py-2 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 rounded-xl text-xs font-bold transition"
+                  className="flex items-center gap-1.5 px-4 py-2 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-xl text-xs font-bold transition shadow-sm hover:shadow-md"
                 >
                   <Download className="w-3.5 h-3.5 text-zinc-400" />
                   <span>Export Catalog</span>
@@ -302,7 +324,7 @@ function DashboardContent() {
                 {/* Add Product */}
                 <button
                   onClick={() => setActiveProductModal("new")}
-                  className="flex items-center gap-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl text-xs font-bold transition shadow-md shadow-emerald-500/10"
+                  className="flex items-center gap-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-0.5"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add Product</span>
@@ -311,7 +333,7 @@ function DashboardContent() {
             </div>
 
             {/* Filter and Search Bar */}
-            <div className="flex flex-wrap gap-2.5 items-center bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/80">
+            <div className="flex flex-wrap gap-2.5 items-center bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md p-3 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/80 shadow-sm">
               {/* Search text */}
               <div className="flex-1 min-w-[200px] relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
@@ -337,16 +359,39 @@ function DashboardContent() {
                   </option>
                 ))}
               </select>
+
+              {/* Active / Archived toggle */}
+              <button
+                onClick={() => setShowArchived(!showArchived)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border shadow-sm hover:shadow-md ${
+                  showArchived
+                    ? "bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400"
+                    : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400"
+                }`}
+              >
+                {showArchived ? <RotateCcw className="w-3.5 h-3.5" /> : <Trash className="w-3.5 h-3.5" />}
+                <span>{showArchived ? "Archived" : "Active"}</span>
+              </button>
             </div>
 
             {/* Products Grid */}
-            {prodLoading ? (
+            {prodLoading || (showArchived && isArchivedLoading) ? (
               <div className="py-20 flex flex-col items-center justify-center gap-3">
                 <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
-                <span className="text-zinc-500 font-semibold text-sm">Loading product catalog...</span>
+                <span className="text-zinc-500 font-semibold text-sm">
+                  {showArchived ? "Loading archived products..." : "Loading product catalog..."}
+                </span>
               </div>
-            ) : products.length === 0 ? (
-              <div className="border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl py-20 flex flex-col items-center justify-center bg-white/50 dark:bg-zinc-900/10">
+            ) : showArchived && archivedProducts.length === 0 ? (
+              <div className="border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl py-20 flex flex-col items-center justify-center bg-white/60 dark:bg-zinc-900/20 backdrop-blur-sm shadow-sm">
+                <RotateCcw className="w-12 h-12 text-zinc-400 mb-3" />
+                <span className="text-zinc-950 dark:text-white font-bold">No archived products</span>
+                <p className="text-xs text-zinc-400 mt-1 max-w-sm text-center">
+                  Archived products will appear here. Use the Archive button on a product card to move it here.
+                </p>
+              </div>
+            ) : !showArchived && products.length === 0 ? (
+              <div className="border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl py-20 flex flex-col items-center justify-center bg-white/60 dark:bg-zinc-900/20 backdrop-blur-sm shadow-sm">
                 <ShoppingBag className="w-12 h-12 text-zinc-400 mb-3" />
                 <span className="text-zinc-950 dark:text-white font-bold">Your inventory is empty</span>
                 <p className="text-xs text-zinc-400 mt-1 max-w-sm text-center">
@@ -355,7 +400,7 @@ function DashboardContent() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {products
+                {(showArchived ? archivedProducts : products)
                   .filter((p: Product) => p.name.toLowerCase().includes(productSearch.toLowerCase()))
                   .filter((p: Product) => (selectedCategoryFilter ? p.categoryId === selectedCategoryFilter : true))
                   .map((p: Product) => {
@@ -363,11 +408,13 @@ function DashboardContent() {
                     return (
                       <div
                         key={p.id}
-                        className={`border bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all duration-300 flex flex-col justify-between group
+                        className={`border bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between group
                         ${
-                          isLowStock
-                            ? "border-rose-400 dark:border-rose-950/80 bg-rose-500/2"
-                            : "border-zinc-200 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700"
+                          showArchived
+                            ? "border-amber-200 dark:border-amber-950/60 bg-amber-500/2"
+                            : isLowStock
+                              ? "border-rose-400 dark:border-rose-950/80 bg-rose-500/2"
+                              : "border-zinc-200 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700"
                         }`}
                       >
                         {/* Header details & Badge */}
@@ -378,8 +425,14 @@ function DashboardContent() {
                             alt={p.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                           />
-                          {isLowStock && (
-                            <span className="absolute top-2 left-2 bg-rose-500 text-white text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shadow-md">
+                          {showArchived && (
+                            <span className="absolute top-2 left-2 bg-amber-500 text-white text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg flex items-center gap-0.5 shadow-lg">
+                              <RotateCcw className="w-3 h-3 shrink-0" />
+                              Archived
+                            </span>
+                          )}
+                          {!showArchived && isLowStock && (
+                            <span className="absolute top-2 left-2 bg-rose-500 text-white text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg flex items-center gap-0.5 shadow-lg">
                               <AlertTriangle className="w-3 h-3 shrink-0" />
                               Low Stock: {p.stock}
                             </span>
@@ -415,25 +468,44 @@ function DashboardContent() {
                             </div>
 
                             <div className="flex items-center gap-1.5">
-                              <button
-                                onClick={() => setActiveProductModal(p)}
-                                className="p-1.5 border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 rounded-lg hover:text-emerald-500 transition"
-                                title="Edit"
-                              >
-                                <Edit className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  if (confirm(`Are you sure you want to delete ${p.name}?`)) {
-                                    deleteProduct(p.id!);
-                                    toast.success(`${p.name} deleted successfully.`);
-                                  }
-                                }}
-                                className="p-1.5 border border-zinc-200 dark:border-zinc-800 hover:border-rose-500 rounded-lg hover:text-rose-500 transition"
-                                title="Delete"
-                              >
-                                <Trash className="w-3.5 h-3.5" />
-                              </button>
+                              {!showArchived && (
+                                <button
+                                  onClick={() => setActiveProductModal(p)}
+                                  className="p-1.5 border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 rounded-lg hover:text-emerald-500 hover:bg-emerald-500/5 transition"
+                                  title="Edit"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              {showArchived ? (
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`Restore ${p.name} to active products?`)) {
+                                      restoreProduct(p.id!);
+                                      toast.success(`${p.name} restored successfully.`);
+                                      clearProductCache();
+                                    }
+                                  }}
+                                  className="p-1.5 border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 rounded-lg hover:text-emerald-500 hover:bg-emerald-500/5 transition"
+                                  title="Restore"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`Archive ${p.name}? It can be restored later from the Archived view.`)) {
+                                      archiveProduct(p.id!);
+                                      toast.success(`${p.name} archived.`);
+                                      clearProductCache();
+                                    }
+                                  }}
+                                  className="p-1.5 border border-zinc-200 dark:border-zinc-800 hover:border-amber-500 rounded-lg hover:text-amber-500 hover:bg-amber-500/5 transition"
+                                  title="Archive"
+                                >
+                                  <Archive className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -450,9 +522,9 @@ function DashboardContent() {
             ==================================================================== */}
         {currentView === "categories" && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-4 md:p-5 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm">
               <div>
-                <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-400 bg-clip-text text-transparent">
                   📁 Product Categories
                 </h1>
                 <p className="text-xs text-zinc-400 font-medium mt-1">
@@ -462,7 +534,7 @@ function DashboardContent() {
 
               <button
                 onClick={() => setActiveCategoryModal("new")}
-                className="flex items-center gap-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl text-xs font-bold transition shadow-md shadow-emerald-500/10"
+                className="flex items-center gap-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-0.5"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Category</span>
@@ -475,7 +547,7 @@ function DashboardContent() {
                 <span className="text-zinc-500 font-semibold text-sm">Loading categories...</span>
               </div>
             ) : categories.length === 0 ? (
-              <div className="border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl py-20 flex flex-col items-center justify-center bg-white/50 dark:bg-zinc-900/10">
+              <div className="border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl py-20 flex flex-col items-center justify-center bg-white/60 dark:bg-zinc-900/20 backdrop-blur-sm shadow-sm">
                 <FolderTree className="w-12 h-12 text-zinc-400 mb-3" />
                 <span className="text-zinc-950 dark:text-white font-bold">No categories exist</span>
                 <p className="text-xs text-zinc-400 mt-1 max-w-sm text-center">
@@ -487,7 +559,7 @@ function DashboardContent() {
                 {categories.map((c: Category) => (
                   <div
                     key={c.id}
-                    className="border border-zinc-200 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900 rounded-2xl p-4 flex gap-4 items-center justify-between shadow-xs hover:shadow-md transition-all duration-300 group"
+                    className="border border-zinc-200 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900 rounded-2xl p-4 flex gap-4 items-center justify-between shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 group"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-14 h-14 bg-zinc-100 rounded-xl overflow-hidden shrink-0 border border-zinc-200/50 dark:border-zinc-800/50">
@@ -502,7 +574,7 @@ function DashboardContent() {
                         <span className="font-extrabold text-zinc-900 dark:text-white text-sm">
                           {c.name}
                         </span>
-                        <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-black self-start mt-1 ${c.active ? "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black self-start mt-1 shadow-sm ${c.active ? "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-500/10" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-zinc-300/10 dark:border-zinc-700/10"}`}>
                           {c.active ? "Active" : "Inactive"}
                         </span>
                       </div>
@@ -511,7 +583,7 @@ function DashboardContent() {
                     <div className="flex flex-col gap-1">
                       <button
                         onClick={() => setActiveCategoryModal(c)}
-                        className="p-1 border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 rounded-lg hover:text-emerald-500 transition"
+                        className="p-1 border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 rounded-lg hover:text-emerald-500 hover:bg-emerald-500/5 transition"
                       >
                         <Edit className="w-3.5 h-3.5" />
                       </button>
@@ -522,7 +594,7 @@ function DashboardContent() {
                             toast.success(`${c.name} deleted.`);
                           }
                         }}
-                        className="p-1 border border-zinc-200 dark:border-zinc-800 hover:border-rose-500 rounded-lg hover:text-rose-500 transition"
+                        className="p-1 border border-zinc-200 dark:border-zinc-800 hover:border-rose-500 rounded-lg hover:text-rose-500 hover:bg-rose-500/5 transition"
                       >
                         <Trash className="w-3.5 h-3.5" />
                       </button>
@@ -539,8 +611,8 @@ function DashboardContent() {
             ==================================================================== */}
         {currentView === "orders" && (
           <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent flex items-center gap-2">
+            <div className="p-4 md:p-5 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm">
+              <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-400 bg-clip-text text-transparent flex items-center gap-2">
                 <span>📦 Orders Dispatch Center</span>
                 {isActiveOrdersRefetching && (
                   <Loader2 className="w-5 h-5 text-emerald-500 animate-spin" />
@@ -580,9 +652,9 @@ function DashboardContent() {
             ==================================================================== */}
         {currentView === "deliveryBoys" && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-4 md:p-5 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm">
               <div>
-                <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-400 bg-clip-text text-transparent">
                   🛵 Delivery Logistics Fleet
                 </h1>
                 <p className="text-xs text-zinc-400 font-medium mt-1">
@@ -592,7 +664,7 @@ function DashboardContent() {
 
               <button
                 onClick={() => setActiveDboyModal("new")}
-                className="flex items-center gap-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl text-xs font-bold transition shadow-md shadow-emerald-500/10"
+                className="flex items-center gap-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-0.5"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Driver</span>
@@ -605,7 +677,7 @@ function DashboardContent() {
                 <span className="text-zinc-500 font-semibold text-sm">Synchronizing driver fleet...</span>
               </div>
             ) : deliveryBoys.length === 0 ? (
-              <div className="border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl py-20 flex flex-col items-center justify-center bg-white/50 dark:bg-zinc-900/10">
+              <div className="border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl py-20 flex flex-col items-center justify-center bg-white/60 dark:bg-zinc-900/20 backdrop-blur-sm shadow-sm">
                 <Bike className="w-12 h-12 text-zinc-400 mb-3" />
                 <span className="text-zinc-950 dark:text-white font-bold">Fleet is empty</span>
                 <p className="text-xs text-zinc-400 mt-1 max-w-sm text-center">
@@ -619,7 +691,7 @@ function DashboardContent() {
                   return (
                     <div
                       key={boy.id}
-                      className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-xs"
+                      className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
                     >
                       {/* Driver Summary */}
                       <div className="flex items-center justify-between gap-3">
@@ -636,10 +708,10 @@ function DashboardContent() {
                         </div>
 
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase shadow-sm ${
                             boy.active
                               ? "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-400 border border-emerald-500/10"
-                              : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-transparent"
+                              : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-zinc-300/10 dark:border-zinc-700/10"
                           }`}
                         >
                           {boy.active ? "Active" : "Inactive"}
@@ -689,13 +761,13 @@ function DashboardContent() {
                       <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
                         <button
                           onClick={() => setActiveDboyModal(boy)}
-                          className="px-3 py-1 border border-zinc-200 dark:border-zinc-855 hover:border-emerald-500 rounded-lg text-xs font-bold hover:text-emerald-500 transition"
+                          className="px-3 py-1 border border-zinc-200 dark:border-zinc-855 hover:border-emerald-500 rounded-lg text-xs font-bold hover:text-emerald-500 hover:bg-emerald-500/5 transition shadow-sm"
                         >
                           Edit Profile
                         </button>
                         <button
                           onClick={() => setProgressBoy(boy)}
-                          className="px-3 py-1 border border-zinc-200 dark:border-zinc-855 hover:border-blue-500 rounded-lg text-xs font-bold hover:text-blue-500 transition"
+                          className="px-3 py-1 border border-zinc-200 dark:border-zinc-855 hover:border-blue-500 rounded-lg text-xs font-bold hover:text-blue-500 hover:bg-blue-500/5 transition shadow-sm"
                         >
                           <BarChart3 className="w-3 h-3 inline mr-1" /> Progress
                         </button>
@@ -706,7 +778,7 @@ function DashboardContent() {
                               toast.success("Driver deleted.");
                             }
                           }}
-                          className="px-3 py-1 border border-zinc-200 dark:border-zinc-855 hover:border-rose-500 rounded-lg text-xs font-bold hover:text-rose-500 transition"
+                          className="px-3 py-1 border border-zinc-200 dark:border-zinc-855 hover:border-rose-500 rounded-lg text-xs font-bold hover:text-rose-500 hover:bg-rose-500/5 transition shadow-sm"
                         >
                           Delete
                         </button>
@@ -745,22 +817,26 @@ function DashboardContent() {
         {currentView === "tickets" && <TicketsManager />}
 
         {/* ====================================================================
-            💬 VIEW: Contacts
+            💬 VIEW: Contacts (Support Tickets)
             ==================================================================== */}
         {currentView === "contacts" && <ContactsManager />}
 
         {/* ====================================================================
-            ⚙️ VIEW: Store Settings (Contact Info)
+            🌐 VIEW: Store Config (Centralized appConfig — branding, features, etc.)
             ==================================================================== */}
-        {currentView === "contactInfo" && <ContactInfoEditor />}
+        {currentView === "storeConfig" && <StoreConfigEditor />}
+
+        {/* ====================================================================
+            💰 VIEW: Earnings & Analytics
+            ==================================================================== */}
 
         {/* ====================================================================
             🧺 VIEW: Dispatch Baskets (Bin-Packing Algorithmic Auto-Grouping)
             ==================================================================== */}
         {currentView === "dispatchBaskets" && (
           <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
+            <div className="p-4 md:p-5 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm">
+              <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-400 bg-clip-text text-transparent">
                 🧺 Bin-Packed Dispatch Baskets
               </h1>
               <p className="text-xs text-zinc-400 font-medium mt-1">
@@ -780,7 +856,7 @@ function DashboardContent() {
 
                 if (baskets.length === 0) {
                   return (
-                    <div className="border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl py-20 flex flex-col items-center justify-center bg-white/50 dark:bg-zinc-900/10">
+                    <div className="border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl py-20 flex flex-col items-center justify-center bg-white/60 dark:bg-zinc-900/20 backdrop-blur-sm shadow-sm">
                       <ShoppingBag className="w-12 h-12 text-zinc-400 mb-3" />
                       <span className="text-zinc-950 dark:text-white font-bold">No dispatch groups available</span>
                       <p className="text-xs text-zinc-400 mt-1 max-w-sm text-center">
@@ -797,7 +873,7 @@ function DashboardContent() {
                       return (
                         <div
                           key={basket.basketId}
-                          className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-xs"
+                          className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-sm hover:shadow-xl transition-all duration-300"
                         >
                           {/* Basket Header */}
                           <div>
@@ -874,7 +950,7 @@ function DashboardContent() {
                                     toast.error(err.message || "Failed to complete batch dispatch transaction.", { id: toastId });
                                   }
                                 }}
-                                className="px-3.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg text-xs transition"
+                                className="px-3.5 py-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-lg text-xs transition shadow-md hover:shadow-lg"
                               >
                                 Dispatch
                               </button>
@@ -900,8 +976,8 @@ function DashboardContent() {
             ==================================================================== */}
         {currentView === "refunds" && (
           <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
+            <div className="p-4 md:p-5 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm">
+              <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-400 bg-clip-text text-transparent">
                 🔁 Refund Transactions Log
               </h1>
               <p className="text-xs text-zinc-400 font-medium mt-1">
@@ -915,7 +991,7 @@ function DashboardContent() {
                 <span className="text-zinc-500 font-semibold text-sm">Synchronizing refund logs...</span>
               </div>
             ) : refunds.length === 0 ? (
-              <div className="border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl py-20 flex flex-col items-center justify-center bg-white/50 dark:bg-zinc-900/10">
+              <div className="border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl py-20 flex flex-col items-center justify-center bg-white/60 dark:bg-zinc-900/20 backdrop-blur-sm shadow-sm">
                 <RotateCcw className="w-12 h-12 text-zinc-400 mb-3" />
                 <span className="text-zinc-950 dark:text-white font-bold">No refund entries logged</span>
                 <p className="text-xs text-zinc-400 mt-1 max-w-sm text-center">
@@ -923,7 +999,7 @@ function DashboardContent() {
                 </p>
               </div>
             ) : (
-              <div className="border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-900 overflow-hidden shadow-xs">
+              <div className="border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-900 overflow-hidden shadow-sm">
                 <table className="w-full text-xs text-left border-collapse">
                   <thead className="bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-800/80 text-zinc-500 font-bold">
                     <tr>
@@ -962,8 +1038,8 @@ function DashboardContent() {
             ==================================================================== */}
         {currentView === "payments" && (
           <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent flex items-center gap-1.5">
+            <div className="p-4 md:p-5 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm">
+              <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-400 bg-clip-text text-transparent flex items-center gap-1.5">
                 <CreditCard className="w-6 h-6 text-emerald-500 shrink-0" />
                 <span>Razorpay Transactions Log</span>
               </h1>
@@ -978,7 +1054,7 @@ function DashboardContent() {
 
               if (rzpOrders.length === 0) {
                 return (
-                  <div className="border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl py-20 flex flex-col items-center justify-center bg-white/50 dark:bg-zinc-900/10">
+                  <div className="border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl py-20 flex flex-col items-center justify-center bg-white/60 dark:bg-zinc-900/20 backdrop-blur-sm shadow-sm">
                     <CreditCard className="w-12 h-12 text-zinc-400 mb-3" />
                     <span className="text-zinc-950 dark:text-white font-bold">No card transactions logged</span>
                     <p className="text-xs text-zinc-400 mt-1 max-w-sm text-center">
@@ -989,7 +1065,7 @@ function DashboardContent() {
               }
 
               return (
-                <div className="border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-900 overflow-hidden shadow-xs">
+                <div className="border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-900 overflow-hidden shadow-sm">
                   <table className="w-full text-xs text-left border-collapse">
                     <thead className="bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-800/80 text-zinc-500 font-bold">
                       <tr>
@@ -1014,7 +1090,7 @@ function DashboardContent() {
                           </td>
                           <td className="p-3 text-center">
                             <span
-                              className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase
+                              className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase shadow-sm
                               ${
                                 o.payment?.status === "paid"
                                   ? "bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/10"
@@ -1028,7 +1104,7 @@ function DashboardContent() {
                             {o.payment?.status === "paid" && (
                               <button
                                 onClick={() => setActiveRefundModal(o)}
-                                className="px-2.5 py-1 bg-rose-500 hover:bg-rose-600 text-white rounded-lg font-bold text-[10px] transition shadow-xs"
+                                className="px-2.5 py-1 bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600 text-white rounded-lg font-bold text-[10px] transition shadow-sm hover:shadow-md"
                               >
                                 Refund
                               </button>
@@ -1068,6 +1144,7 @@ function DashboardContent() {
             } else {
               await updateProduct({ id: activeProductModal.id!, updates: pPayload });
             }
+            clearProductCache();
           }}
           onClose={() => setActiveProductModal(null)}
         />

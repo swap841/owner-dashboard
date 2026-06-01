@@ -40,7 +40,7 @@ export type DashboardView =
   | "payments"
   | "tickets"
   | "contacts"
-  | "contactInfo"
+  | "storeConfig"
   | "deliveryPartner";
 
 interface SidebarProps {
@@ -65,7 +65,7 @@ export default function Sidebar({ currentView, onViewChange, ownerName }: Sideba
     { id: "dispatchBaskets", label: "Dispatch Baskets", icon: ShoppingBasket, color: "text-indigo-500" },
     { id: "tickets", label: "Tickets", icon: Ticket, color: "text-red-500" },
     { id: "contacts", label: "Contacts", icon: MessageSquare, color: "text-pink-500" },
-    { id: "contactInfo", label: "Store Settings", icon: Settings, color: "text-gray-500" },
+    { id: "storeConfig", label: "Store Config", icon: Settings, color: "text-emerald-500" },
     { id: "earnings", label: "Earnings & Analytics", icon: BarChart3, color: "text-violet-500" },
     { id: "refunds", label: "Refunds", icon: RotateCcw, color: "text-rose-500" },
     { id: "payments", label: "Transactions", icon: CreditCard, color: "text-sky-500" },

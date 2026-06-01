@@ -11,6 +11,7 @@ import {
   deleteDoc,
   query,
   orderBy,
+  where,
   writeBatch,
   runTransaction,
   serverTimestamp,
@@ -23,7 +24,7 @@ const db = getFirestore(app);
  * Fetch all products sorted by name
  */
 export async function getProducts(): Promise<Product[]> {
-  const q = query(collection(db, "products"), orderBy("name"));
+  const q = query(collection(db, "products"), where("active", "==", true), orderBy("name"));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({
     id: d.id,
@@ -84,7 +85,7 @@ export async function updateProduct(id: string, updates: Partial<Product>): Prom
 }
 
 /**
- * Delete product and decrement denormalized productCount in category
+ * Soft-delete: set active to false instead of actually deleting
  */
 export async function deleteProduct(id: string): Promise<void> {
   const productRef = doc(db, "products", id);
@@ -95,11 +96,41 @@ export async function deleteProduct(id: string): Promise<void> {
       throw new Error("Product not found");
     }
 
-    const data = productSnap.data() as Product;
-
-    // Delete product
-    transaction.delete(productRef);
+    transaction.update(productRef, { active: false, updatedAt: serverTimestamp() });
   });
+}
+
+/**
+ * Alias for deleteProduct – archives the product
+ */
+export const archiveProduct = deleteProduct;
+
+/**
+ * Restore an archived product by setting active back to true
+ */
+export async function restoreProduct(id: string): Promise<void> {
+  const productRef = doc(db, "products", id);
+
+  await runTransaction(db, async (transaction) => {
+    const productSnap = await transaction.get(productRef);
+    if (!productSnap.exists()) {
+      throw new Error("Product not found");
+    }
+
+    transaction.update(productRef, { active: true, updatedAt: serverTimestamp() });
+  });
+}
+
+/**
+ * Fetch archived (soft-deleted) products
+ */
+export async function getArchivedProducts(): Promise<Product[]> {
+  const q = query(collection(db, "products"), where("active", "==", false), orderBy("name"));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as Product[];
 }
 
 /**

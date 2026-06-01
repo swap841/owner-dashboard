@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import {
   X, Loader2, IndianRupee, TrendingUp, Gift, Clock, Plus, ChevronDown, ChevronUp,
 } from "lucide-react";
-import { collectionGroup, query, where, getDocs, doc, updateDoc, Timestamp } from "firebase/firestore";
+import { getDoc, getDocs, doc, updateDoc, Timestamp, collectionGroup, query, where } from "firebase/firestore";
 import { app } from "../firebaseConfig";
 import { getFirestore } from "firebase/firestore";
 import toast from "react-hot-toast";
@@ -116,9 +116,6 @@ export default function EmployeeProgressModal({
     setSaving(true);
     try {
       const ref = doc(db, collectionName, employeeId);
-      const snap = await getDocs(collectionGroup(db, "orders"));
-      // Not needed - just fetch the worker doc
-      const { getDoc } = await import("firebase/firestore");
       const empSnap = await getDoc(ref);
       const empData = empSnap.data() || {};
       const existingIncrements = empData.incrementHistory || [];
