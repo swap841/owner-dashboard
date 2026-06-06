@@ -10,7 +10,6 @@ import {
   addDoc,
   deleteDoc,
   query,
-  orderBy,
   arrayUnion,
   Timestamp,
   serverTimestamp,
@@ -20,8 +19,19 @@ import { Contact, ContactInfo, ContactReply } from "../../types";
 const db = getFirestore(app);
 
 export async function getContacts(): Promise<Contact[]> {
-  const snap = await getDocs(query(collection(db, "contacts"), orderBy("createdAt", "desc")));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[];
+  try {
+    const snap = await getDocs(collection(db, "contacts"));
+    const contacts = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[];
+    contacts.sort((a, b) => {
+      const aT = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0;
+      const bT = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0;
+      return bT - aT;
+    });
+    return contacts;
+  } catch (err) {
+    console.error("Failed to fetch contacts:", err);
+    return [];
+  }
 }
 
 export async function getContact(id: string): Promise<Contact | null> {

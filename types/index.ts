@@ -32,8 +32,11 @@ export interface Product {
 export interface Category {
   id?: string;
   name: string;
+  displayName?: string;
   imageUrl: string;
   active: boolean;
+  order?: number;
+  icon?: string;
 }
 
 export interface Banner {
@@ -219,6 +222,10 @@ export interface Order {
   createdAt?: Timestamp | any;
   rejectionHistory: { rejectedBy: string; reason: string; at: Timestamp | any }[];
   ticketContactId?: string;
+  actualPayment?: ActualPayment;
+  deliveryStatus?: DeliveryStatus;
+  reconciliation?: Reconciliation;
+  partialDeliveryItems?: PartialDeliveryItem[];
 }
 
 export interface Refund {
@@ -260,4 +267,38 @@ export interface Coupon {
   usedCount: number;
   active: boolean;
   createdAt?: Timestamp | any;
+}
+
+export interface ActualPayment {
+  method: "cod" | "razorpay" | "mixed";
+  codAmount: number;
+  upiAmount: number;
+  totalCollected: number;
+  collectedBy?: string;
+  collectedAt?: Timestamp | any;
+}
+
+export interface DeliveryStatus {
+  itemsDelivered: number;
+  itemsTotal: number;
+  partialDelivery: boolean;
+  missingItems?: string[];
+  deliveredAt?: Timestamp | any;
+}
+
+export interface PartialDeliveryItem {
+  productId: string;
+  name: string;
+  ordered: number;
+  delivered: number;
+  missing: number;
+}
+
+export interface Reconciliation {
+  expectedAmount: number;
+  actualCollected: number;
+  difference: number;
+  status: "pending" | "settled" | "shortage" | "excess";
+  settledAt?: Timestamp | any;
+  settledBy?: string;
 }

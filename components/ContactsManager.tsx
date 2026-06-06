@@ -70,7 +70,7 @@ export default function ContactsManager() {
   const resolved = contacts.filter((c) => c.status === "resolved");
 
   const renderContact = (c: Contact) => {
-    const StatusIcon = STATUS_ICONS[c.status || "open"];
+    const StatusIcon = STATUS_ICONS[c.status || "open"] || AlertCircle;
 
     return (
       <div key={c.id} className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-2xl shadow-xs overflow-hidden">
@@ -118,7 +118,9 @@ export default function ContactsManager() {
           </p>
           {c.createdAt && (
             <p className="text-[9px] text-zinc-400 mt-1.5">
-              {new Date(c.createdAt.seconds * 1000).toLocaleString()}
+              {c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() :
+               c.createdAt?.seconds ? new Date(c.createdAt.seconds * 1000).toLocaleString() :
+               typeof c.createdAt === 'string' ? new Date(c.createdAt).toLocaleString() : ''}
             </p>
           )}
         </div>
@@ -171,7 +173,7 @@ export default function ContactsManager() {
           )}
 
           {/* Missing items checkboxes (only when complaint is about missing items) */}
-          {c.status !== "resolved" && c.message.toUpperCase().includes("[MISSING]") && (() => {
+          {c.status !== "resolved" && c.message && c.message.toUpperCase().includes("[MISSING]") && (() => {
             const items = parseItemsFromMessage(c.message);
             if (items.length === 0) return null;
             return (

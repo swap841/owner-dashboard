@@ -16,14 +16,18 @@ interface CategoryFormProps {
 
 export default function CategoryForm({ category, onSave, onClose }: CategoryFormProps) {
   const [name, setName] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [order, setOrder] = useState<number>(0);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (category) {
       setName(category.name);
+      setDisplayName(category.displayName || category.name || "");
       setImageUrl(category.imageUrl || "");
+      setOrder(category.order ?? 0);
     }
   }, [category]);
 
@@ -52,8 +56,10 @@ export default function CategoryForm({ category, onSave, onClose }: CategoryForm
     try {
       await onSave({
         name: name.trim(),
+        displayName: displayName.trim() || name.trim(),
         imageUrl: imageUrl.trim() || "/images/generic-category-image.png",
         active: true,
+        order,
       });
       toast.success(category ? "Category updated successfully!" : "Category created successfully!");
       onClose();
@@ -94,6 +100,35 @@ export default function CategoryForm({ category, onSave, onClose }: CategoryForm
               required
               className="w-full px-3.5 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold"
               placeholder="e.g. Vegetables & Herbs"
+            />
+          </div>
+
+          {/* Display Name */}
+          <div>
+            <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
+              Display Name
+            </label>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className="w-full px-3.5 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold"
+              placeholder="Shown to customers (e.g. Fresh Vegetables)"
+            />
+          </div>
+
+          {/* Sort Order */}
+          <div>
+            <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
+              Sort Order
+            </label>
+            <input
+              type="number"
+              value={order}
+              onChange={(e) => setOrder(Number(e.target.value))}
+              min={0}
+              className="w-full px-3.5 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold"
+              placeholder="Lower numbers appear first"
             />
           </div>
 

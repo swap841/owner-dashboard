@@ -289,32 +289,14 @@ export const signInOwnerWithEmail = async (email: string, password: string): Pro
             const result = await signInWithEmailAndPassword(auth, email, password);
             user = result.user;
         } catch (signInError: any) {
-            // If user doesn't exist, create the account
-            if (signInError.code === 'auth/user-not-found') {
-                try {
-                    // Auto-create account for authorized email
-                    const result = await createUserWithEmailAndPassword(auth, email, password);
-                    user = result.user;
-                    
-                    // Set display name
-                    const displayName = email.split('@')[0];
-                    await updateProfile(user, { displayName });
-                    
-                } catch (signUpError: any) {
-                    console.error("Error creating account:", signUpError);
-                    
-                    if (signUpError.code === 'auth/weak-password') {
-                        throw new Error("Password is too weak. Please use a stronger password.");
-                    } else {
-                        throw new Error("Failed to create account. Please try again.");
-                    }
-                }
-            } else if (signInError.code === 'auth/wrong-password') {
+            if (signInError.code === 'auth/wrong-password') {
                 throw new Error("Incorrect password. Please try again.");
             } else if (signInError.code === 'auth/too-many-requests') {
                 throw new Error("Too many failed login attempts. Please try again later.");
             } else if (signInError.code === 'auth/invalid-credential') {
                 throw new Error("Invalid credentials. Please check your email and password.");
+            } else if (signInError.code === 'auth/user-not-found') {
+                throw new Error("No account found with this email. Please sign up first.");
             } else {
                 throw signInError;
             }

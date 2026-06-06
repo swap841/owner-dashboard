@@ -51,6 +51,7 @@ export interface EarningsData {
   weekOrders: number;
   monthOrders: number;
   totalOrders: number;
+  pendingOrders: number;
   avgOrderValue: number;
   codRevenue: number;
   razorpayRevenue: number;
@@ -63,49 +64,33 @@ export interface EarningsData {
 
 async function fetchAllOrders(): Promise<any[]> {
   const uid = auth.currentUser?.uid;
-  console.log("[EARNINGS] Current user UID:", uid);
-  console.log("[EARNINGS] Auth state:", auth.currentUser ? "signed in" : "NOT signed in");
 
   // METHOD 1: Try collectionGroup (scans ALL users' orders)
   try {
-    console.log("[EARNINGS] Trying collectionGroup('orders')...");
     const cgSnap = await getDocs(collectionGroup(db, "orders"));
-    console.log("[EARNINGS] collectionGroup returned", cgSnap.size, "docs");
     if (cgSnap.size > 0) {
-      const firstDoc = cgSnap.docs[0];
-      console.log("[EARNINGS] First doc path:", firstDoc.ref.path);
-      console.log("[EARNINGS] First doc data:", JSON.stringify(firstDoc.data()).slice(0, 300));
       return cgSnap.docs;
     }
-    console.log("[EARNINGS] collectionGroup returned 0 docs — falling back to subcollection query");
-  } catch (cgErr: any) {
-    console.error("[EARNINGS] collectionGroup FAILED:", cgErr.code || cgErr.message);
-    console.error("[EARNINGS] Full error:", JSON.stringify(cgErr));
+  } catch {
+    // fallback below
   }
 
   // METHOD 2: Fallback — query the owner's orders subcollection directly
   if (uid) {
     try {
-      console.log("[EARNINGS] Fallback: querying users/" + uid + "/orders...");
       const subSnap = await getDocs(collection(db, "users", uid, "orders"));
-      console.log("[EARNINGS] Subcollection returned", subSnap.size, "docs");
-      if (subSnap.size > 0) {
-        console.log("[EARNINGS] First doc data:", JSON.stringify(subSnap.docs[0].data()).slice(0, 300));
-      }
       return subSnap.docs;
-    } catch (subErr: any) {
-      console.error("[EARNINGS] Subcollection query FAILED:", subErr.code || subErr.message);
+    } catch {
+      // fallback below
     }
   }
 
   // METHOD 3: Fallback — query top-level orders collection
   try {
-    console.log("[EARNINGS] Fallback: querying top-level orders...");
     const topSnap = await getDocs(collection(db, "orders"));
-    console.log("[EARNINGS] Top-level returned", topSnap.size, "docs");
     return topSnap.docs;
-  } catch (topErr: any) {
-    console.error("[EARNINGS] Top-level query FAILED:", topErr.code || topErr.message);
+  } catch {
+    // give up
   }
 
   return [];
@@ -115,10 +100,7 @@ export function useEarnings() {
   return useQuery<EarningsData>({
     queryKey: ["earnings"],
     queryFn: async () => {
-      console.log("[EARNINGS] queryFn starting...");
-
       const allDocs = await fetchAllOrders();
-      console.log("[EARNINGS] Total docs fetched:", allDocs.length);
 
       const workerSnap = await getDocs(collection(db, "workers")).catch(() => ({ docs: [] as any[] }));
       const boysSnap = await getDocs(collection(db, "deliveryBoys")).catch(() => ({ docs: [] as any[] }));
@@ -130,33 +112,33 @@ export function useEarnings() {
 
       const rawOrders = allDocs.map((d: any) => {
         const data = d.data();
+        const ap = data.actualPayment;
+        const effectiveRevenue = ap
+          ? (Number(ap.totalCollected) || (Number(ap.codAmount) || 0) + (Number(ap.upiAmount) || 0))
+          : Number(data.totalAmount) || 0;
         return {
           id: d.id,
           userId: d.ref.parent.parent?.id || data.userId || "",
           totalAmount: Number(data.totalAmount) || 0,
+          effectiveRevenue,
           status: data.status || "",
           deliveredAt: toDate(data.deliveredAt),
           createdAt: toDate(data.createdAt),
-          paymentMethod: data.payment?.method || data.paymentMethod || "",
+          paymentMethod: ap?.method || data.payment?.method || data.paymentMethod || "",
           assignedWorkerId: data.assignedWorkerId || null,
           assignedDeliveryBoyId: data.assignedDeliveryBoyId || null,
         };
       });
-
-      console.log("[EARNINGS] rawOrders count:", rawOrders.length);
-      if (rawOrders.length > 0) {
-        const statuses = [...new Set(rawOrders.map((o: any) => o.status))];
-        console.log("[EARNINGS] Status values found:", statuses);
-        console.log("[EARNINGS] Sample order:", JSON.stringify(rawOrders[0]));
-      }
 
       const now = new Date();
       const todayStart = getDayStart(now);
       const weekStart = getWeekStart(now);
       const monthStart = getMonthStart(now);
 
+      const activeStatuses = ["pending", "packing", "assigned", "ready to dispatch", "out for delivery"];
+      const pending = rawOrders.filter((o) => activeStatuses.includes((o.status || "").toLowerCase()));
+
       const delivered = rawOrders.filter((o) => o.status === "Delivered" || o.status === "delivered" || o.status === "Completed" || o.status === "completed");
-      console.log("[EARNINGS] Delivered orders:", delivered.length, "of", rawOrders.length);
 
       const totalDelivered = delivered.length;
 
@@ -165,12 +147,10 @@ export function useEarnings() {
         return dt && dt >= start;
       };
 
-      const todayRevenue = delivered.filter((o) => dateFilter(o, todayStart)).reduce((s, o) => s + o.totalAmount, 0);
-      const weekRevenue = delivered.filter((o) => dateFilter(o, weekStart)).reduce((s, o) => s + o.totalAmount, 0);
-      const monthRevenue = delivered.filter((o) => dateFilter(o, monthStart)).reduce((s, o) => s + o.totalAmount, 0);
-      const totalRevenue = delivered.reduce((s, o) => s + o.totalAmount, 0);
-
-      console.log("[EARNINGS] Revenue — Today:", todayRevenue, "Week:", weekRevenue, "Month:", monthRevenue, "Total:", totalRevenue);
+      const todayRevenue = delivered.filter((o) => dateFilter(o, todayStart)).reduce((s, o) => s + o.effectiveRevenue, 0);
+      const weekRevenue = delivered.filter((o) => dateFilter(o, weekStart)).reduce((s, o) => s + o.effectiveRevenue, 0);
+      const monthRevenue = delivered.filter((o) => dateFilter(o, monthStart)).reduce((s, o) => s + o.effectiveRevenue, 0);
+      const totalRevenue = delivered.reduce((s, o) => s + o.effectiveRevenue, 0);
 
       const todayOrders = delivered.filter((o) => dateFilter(o, todayStart)).length;
       const weekOrders = delivered.filter((o) => dateFilter(o, weekStart)).length;
@@ -180,8 +160,8 @@ export function useEarnings() {
 
       const codDelivered = delivered.filter((o) => o.paymentMethod === "cod");
       const rzpDelivered = delivered.filter((o) => o.paymentMethod === "razorpay");
-      const codRevenue = codDelivered.reduce((s, o) => s + o.totalAmount, 0);
-      const razorpayRevenue = rzpDelivered.reduce((s, o) => s + o.totalAmount, 0);
+      const codRevenue = codDelivered.reduce((s, o) => s + o.effectiveRevenue, 0);
+      const razorpayRevenue = rzpDelivered.reduce((s, o) => s + o.effectiveRevenue, 0);
 
       const workerAgg: Record<string, { count: number; last: Date | null }> = {};
       delivered.forEach((o) => {
@@ -222,7 +202,7 @@ export function useEarnings() {
         const dayLabel = dayStart.toLocaleDateString("en-IN", { weekday: "short", month: "short", day: "numeric" });
         dailyRevenue.push({
           date: dayLabel,
-          revenue: dayOrders.reduce((s, o) => s + o.totalAmount, 0),
+          revenue: dayOrders.reduce((s, o) => s + o.effectiveRevenue, 0),
           count: dayOrders.length,
         });
       }
@@ -230,6 +210,7 @@ export function useEarnings() {
       return {
         todayRevenue, weekRevenue, monthRevenue, totalRevenue,
         todayOrders, weekOrders, monthOrders, totalOrders: totalDelivered,
+        pendingOrders: pending.length,
         avgOrderValue,
         codRevenue, razorpayRevenue, codOrders: codDelivered.length, razorpayOrders: rzpDelivered.length,
         workers, deliveryBoys, dailyRevenue,

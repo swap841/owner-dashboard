@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, collectionGroup, query, where, getDocs } from "firebase/firestore";
-import { app } from "../firebaseConfig";
+import { collection, query, where, getDocs, collectionGroup } from "firebase/firestore";
 import { getFirestore } from "firebase/firestore";
-import Link from "next/link";
-
+import { getAuth } from "firebase/auth";
+import { app } from "../firebaseConfig";
 const db = getFirestore(app);
+import StorePreview from "./StorePreview";
 import {
   ShoppingBag, Package, Users, Bike, AlertTriangle, Ticket, MessageSquare,
   IndianRupee, TrendingUp, Clock, ArrowUpRight, Loader2, Percent,
@@ -22,6 +22,8 @@ interface KpiCard {
   view?: string;
 }
 
+interface SnapFallback { docs: Array<{ id: string; data: () => any; ref: any }>; size: number; }
+
 interface DashboardHomeViewProps {
   onNavigate?: (view: string) => void;
 }
@@ -32,42 +34,95 @@ export default function DashboardHomeView({ onNavigate }: DashboardHomeViewProps
   const [pendingOrders, setPendingOrders] = useState<any[]>([]);
   const [showPendingOrders, setShowPendingOrders] = useState(false);
 
+  const safeQuery = async (queryFn: () => Promise<any>, fallback: SnapFallback): Promise<SnapFallback> => {
+    try {
+      const result = await queryFn();
+      return result;
+    } catch (err) {
+      console.warn("Query failed (non-critical):", err);
+      return fallback;
+    }
+  };
+
+  const auth = getAuth(app);
+  const uid = auth.currentUser?.uid;
+
   useEffect(() => {
     const fetchKpis = async () => {
       try {
+        if (!uid) {
+          setLoading(false);
+          return;
+        }
+
         const now = new Date();
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const todayStartMs = todayStart.getTime();
 
-        const [ordersSnap, todayOrdersSnap, productsSnap, workersSnap, boysSnap, ticketsSnap, contactsSnap, couponsSnap] = await Promise.all([
-          getDocs(query(collectionGroup(db, "orders"), where("status", "in", ["Pending", "Packing", "Ready to Dispatch"]))),
-          getDocs(query(collectionGroup(db, "orders"), where("createdAt", ">=", todayStart.toISOString()))),
-          getDocs(collection(db, "products")),
-          getDocs(query(collection(db, "workers"), where("active", "==", true))),
-          getDocs(query(collection(db, "deliveryBoys"), where("active", "==", true))),
-          getDocs(query(collection(db, "tickets"), where("resolved", "==", false))),
-          getDocs(query(collection(db, "contacts"), where("read", "==", false))),
-          getDocs(collection(db, "coupons")),
+        const emptySnap: SnapFallback = { docs: [], size: 0 };
+
+        const [
+          allOrdersSnap,
+          productsSnap,
+          workersSnap,
+          boysSnap,
+          ticketsSnap,
+          contactsSnap,
+          couponsSnap,
+        ] = await Promise.all([
+          safeQuery(() => getDocs(collectionGroup(db, "orders")), emptySnap),
+          safeQuery(() => getDocs(query(collection(db, "products"), where("active", "==", true))), emptySnap),
+          safeQuery(() => getDocs(query(collection(db, "workers"), where("active", "==", true))), emptySnap),
+          safeQuery(() => getDocs(query(collection(db, "deliveryBoys"), where("active", "==", true))), emptySnap),
+          safeQuery(() => getDocs(query(collection(db, "tickets"), where("resolved", "==", false))), emptySnap),
+          safeQuery(() => getDocs(collection(db, "contacts")), emptySnap),
+          safeQuery(() => getDocs(collection(db, "coupons")), emptySnap),
         ]);
 
-        const lowStock = productsSnap.docs.filter(d => {
+        const activeStatuses = ["pending", "packing", "ready to dispatch", "assigned", "accepted", "out for delivery", "awaiting verification"];
+        const pendingOrdersDocs = allOrdersSnap.docs.filter((d: any) => {
+          const status = (d.data().status || "").toLowerCase();
+          return activeStatuses.includes(status);
+        });
+
+        const todayOrdersDocs = allOrdersSnap.docs.filter((d: any) => {
+          const data = d.data();
+          const createdVal = data.createdAt || data.date;
+          if (!createdVal) return false;
+          let ts: number;
+          if (createdVal?.toDate) ts = createdVal.toDate().getTime();
+          else if (createdVal?.seconds) ts = createdVal.seconds * 1000;
+          else ts = new Date(createdVal).getTime();
+          return ts >= todayStartMs;
+        });
+
+        const lowStock = productsSnap.docs.filter((d: any) => {
           const stock = d.data().stock ?? 0;
           const threshold = d.data().lowStockThreshold ?? 5;
           return stock < threshold;
         });
 
-        const todayRevenue = todayOrdersSnap.docs.reduce((sum, d) => sum + (d.data().totalAmount || 0), 0);
-        const activeCoupons = couponsSnap.docs.filter(d => d.data().active === true);
+        const todayRevenue = todayOrdersDocs
+          .filter((d: any) => (d.data().status || "").toLowerCase() !== "cancelled")
+          .reduce((sum: number, d: any) => sum + (d.data().totalAmount || 0), 0);
+        const activeCoupons = couponsSnap.docs.filter((d: any) => d.data().active === true);
+        const unreadContacts = contactsSnap.docs.filter((d: any) => d.data().read !== true);
 
-        setPendingOrders(ordersSnap.docs.map(d => ({ id: d.id, userId: d.ref.parent.parent?.id, ...d.data() })));
+        console.log("[DASHBOARD] todayRevenue:", todayRevenue, "activeCoupons:", activeCoupons.length, "unreadContacts:", unreadContacts.length);
+
+        setPendingOrders(pendingOrdersDocs.map((d: any) => {
+          const data = d.data();
+          return { id: d.id, userId: data.userId || "N/A", ...data };
+        }));
         setKpis([
-          { label: "Pending Orders", value: ordersSnap.size, icon: Package, color: "text-amber-600", bgColor: "bg-amber-50", view: "pending-expand" },
+          { label: "Pending Orders", value: pendingOrdersDocs.length, icon: Package, color: "text-amber-600", bgColor: "bg-amber-50", view: "pending-expand" },
           { label: "Today's Revenue", value: `₹${todayRevenue.toFixed(0)}`, icon: IndianRupee, color: "text-emerald-600", bgColor: "bg-emerald-50", view: "earnings" },
           { label: "Low Stock Items", value: lowStock.length, icon: AlertTriangle, color: "text-red-600", bgColor: "bg-red-50", view: "products" },
           { label: "Active Workers", value: workersSnap.size, icon: Users, color: "text-orange-600", bgColor: "bg-orange-50", view: "workers" },
           { label: "Active Delivery Boys", value: boysSnap.size, icon: Bike, color: "text-blue-600", bgColor: "bg-blue-50", view: "deliveryBoys" },
           { label: "Active Coupons", value: activeCoupons.length, icon: Percent, color: "text-pink-600", bgColor: "bg-pink-50", view: "coupons" },
           { label: "Unresolved Tickets", value: ticketsSnap.size, icon: Ticket, color: "text-purple-600", bgColor: "bg-purple-50", view: "tickets" },
-          { label: "Unread Messages", value: contactsSnap.size, icon: MessageSquare, color: "text-pink-600", bgColor: "bg-pink-50", view: "contacts" },
+          { label: "Unread Messages", value: unreadContacts.length, icon: MessageSquare, color: "text-pink-600", bgColor: "bg-pink-50", view: "contacts" },
           { label: "Total Products", value: productsSnap.size, icon: ShoppingBag, color: "text-teal-600", bgColor: "bg-teal-50", view: "products" },
         ]);
       } catch (err) {
@@ -76,8 +131,8 @@ export default function DashboardHomeView({ onNavigate }: DashboardHomeViewProps
         setLoading(false);
       }
     };
-    fetchKpis();
-  }, []);
+    if (uid) fetchKpis();
+  }, [uid]);
 
   const handleKpiClick = (view?: string) => {
     if (!view) return;
@@ -148,10 +203,10 @@ export default function DashboardHomeView({ onNavigate }: DashboardHomeViewProps
               <div className="p-8 text-center text-zinc-400 text-sm font-medium">No pending orders</div>
             ) : (
               pendingOrders.map((order: any) => (
-                <Link
+                <button
                   key={order.id}
-                  href={`/orders/${order.id}`}
-                  className="flex items-center gap-4 p-4 hover:bg-zinc-50 transition group"
+                  onClick={() => onNavigate?.("orders")}
+                  className="w-full text-left flex items-center gap-4 p-4 hover:bg-zinc-50 transition group"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -177,12 +232,15 @@ export default function DashboardHomeView({ onNavigate }: DashboardHomeViewProps
                     </div>
                   </div>
                   <ExternalLink className="w-4 h-4 text-zinc-300 group-hover:text-emerald-500 transition shrink-0" />
-                </Link>
+                  </button>
               ))
             )}
           </div>
         </div>
       )}
+
+      {/* Store Info Preview */}
+      <StorePreview />
 
       <div className="rounded-2xl bg-white border border-zinc-200/60 p-6 shadow-sm">
         <h2 className="font-bold text-zinc-800 flex items-center gap-2">

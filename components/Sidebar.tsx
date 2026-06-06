@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ShoppingBag,
   FolderTree,
@@ -23,6 +23,13 @@ import {
   MessageSquare,
   Percent,
   FileText,
+  Shield,
+  MapPin,
+  Sparkles,
+  DraftingCompass,
+  Banknote,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 export type DashboardView =
@@ -43,11 +50,17 @@ export type DashboardView =
   | "contacts"
   | "storeConfig"
   | "deliveryPartner"
+  | "apiKeys"
+  | "deliveryZones"
+  | "outOfRadiusOrders"
+  | "setupWizard"
   | "policyShipping"
   | "policyRefund"
   | "policyPrivacy"
   | "policyTerms"
-  | "policyContact";
+  | "policyContact"
+  | "reconciliation"
+  | "customerAnalytics";
 
 interface SidebarProps {
   currentView: DashboardView;
@@ -57,6 +70,21 @@ interface SidebarProps {
 
 export default function Sidebar({ currentView, onViewChange, ownerName }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    const isDark = localStorage.getItem("theme") === "dark" ||
+      (!localStorage.getItem("theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    setDarkMode(isDark);
+    document.documentElement.classList.toggle("dark", isDark);
+  }, []);
+
+  const toggleDarkMode = () => {
+    const next = !darkMode;
+    setDarkMode(next);
+    localStorage.setItem("theme", next ? "dark" : "light");
+    document.documentElement.classList.toggle("dark", next);
+  };
 
   const menuItems = [
     { id: "home", label: "Dashboard Home", icon: BarChart3, color: "text-emerald-500" },
@@ -73,9 +101,15 @@ export default function Sidebar({ currentView, onViewChange, ownerName }: Sideba
     { id: "contacts", label: "Contacts", icon: MessageSquare, color: "text-pink-500" },
     { id: "storeConfig", label: "Store Config", icon: Settings, color: "text-emerald-500" },
     { id: "earnings", label: "Earnings & Analytics", icon: BarChart3, color: "text-violet-500" },
+    { id: "customerAnalytics", label: "Customer Analytics", icon: Users, color: "text-indigo-500" },
     { id: "refunds", label: "Refunds", icon: RotateCcw, color: "text-rose-500" },
     { id: "payments", label: "Transactions", icon: CreditCard, color: "text-sky-500" },
+    { id: "reconciliation", label: "Payment Reconciliation", icon: Banknote, color: "text-emerald-500" },
     { id: "deliveryPartner", label: "Delivery Partner", icon: Truck, color: "text-cyan-500" },
+    { id: "outOfRadiusOrders", label: "Out-of-Radius Orders", icon: DraftingCompass, color: "text-amber-500" },
+    { id: "deliveryZones", label: "Delivery Zones", icon: MapPin, color: "text-emerald-500" },
+    { id: "apiKeys", label: "API Keys", icon: Shield, color: "text-red-500" },
+    { id: "setupWizard", label: "Setup Wizard", icon: Sparkles, color: "text-purple-500" },
     { id: "policyShipping", label: "Shipping Policy", icon: FileText, color: "text-emerald-500" },
     { id: "policyRefund", label: "Refund Policy", icon: FileText, color: "text-emerald-500" },
     { id: "policyPrivacy", label: "Privacy Policy", icon: FileText, color: "text-emerald-500" },
@@ -163,20 +197,29 @@ export default function Sidebar({ currentView, onViewChange, ownerName }: Sideba
           </nav>
         </div>
 
-        {/* Owner Profile Snippet */}
-        {ownerName && (
-          <div className="border-t border-zinc-200/60 dark:border-zinc-800/60 pt-4 mt-auto flex items-center gap-3 px-2">
-            <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-              <UserCheck className="w-4 h-4 text-emerald-500" />
+        {/* Owner Profile Snippet + Dark Mode Toggle */}
+        <div className="border-t border-zinc-200/60 dark:border-zinc-800/60 pt-4 mt-auto px-2 space-y-3">
+          <button
+            onClick={toggleDarkMode}
+            className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+          >
+            {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            <span>{darkMode ? "Light Mode" : "Dark Mode"}</span>
+          </button>
+          {ownerName && (
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                <UserCheck className="w-4 h-4 text-emerald-500" />
+              </div>
+              <div className="flex flex-col overflow-hidden">
+                <span className="text-xs text-zinc-400 dark:text-zinc-500 font-medium">Log-in Session</span>
+                <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 truncate">
+                  {ownerName}
+                </span>
+              </div>
             </div>
-            <div className="flex flex-col overflow-hidden">
-              <span className="text-xs text-zinc-400 dark:text-zinc-500 font-medium">Log-in Session</span>
-              <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 truncate">
-                {ownerName}
-              </span>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </aside>
     </>
   );

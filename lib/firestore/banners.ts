@@ -7,16 +7,16 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  query,
-  orderBy,
 } from "firebase/firestore";
 import { Banner } from "../../types";
 
 const db = getFirestore(app);
 
 export async function getBanners(): Promise<Banner[]> {
-  const snap = await getDocs(query(collection(db, "banners"), orderBy("imageUrl")));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Banner[];
+  const snap = await getDocs(collection(db, "banners"));
+  const banners = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Banner[];
+  banners.sort((a: any, b: any) => (a.order ?? 99) - (b.order ?? 99));
+  return banners;
 }
 
 export async function createBanner(banner: Omit<Banner, "id">): Promise<string> {

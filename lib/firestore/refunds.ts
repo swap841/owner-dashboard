@@ -9,7 +9,6 @@ import {
   addDoc,
   updateDoc,
   query,
-  orderBy,
   serverTimestamp,
 } from "firebase/firestore";
 import { Refund } from "../../types";
@@ -20,12 +19,23 @@ const db = getFirestore(app);
  * Fetch all logged refunds sorted by createdAt date descending
  */
 export async function getRefunds(): Promise<Refund[]> {
-  const q = query(collection(db, "refunds"), orderBy("createdAt", "desc"));
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({
-    id: d.id,
-    ...d.data(),
-  })) as Refund[];
+  try {
+    const q = query(collection(db, "refunds"));
+    const snap = await getDocs(q);
+    const refunds = snap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    })) as Refund[];
+    refunds.sort((a: any, b: any) => {
+      const aT = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0;
+      const bT = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0;
+      return bT - aT;
+    });
+    return refunds;
+  } catch (err) {
+    console.error("Failed to fetch refunds:", err);
+    return [];
+  }
 }
 
 /**

@@ -24,6 +24,7 @@ import {
   Loader2,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { getAppConfig, AppConfig } from "@/lib/firestore/appConfig";
 
 interface OrderListProps {
   orders: Order[];
@@ -53,7 +54,12 @@ export default function OrderList({
   const [expandedOrders, setExpandedOrders] = useState<Record<string, boolean>>({});
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [newlyArrivedIds, setNewlyArrivedIds] = useState<Set<string>>(new Set());
+  const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
   const seenOrderIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    getAppConfig().then(setAppConfig).catch(() => {});
+  }, []);
 
   // 1. Initialize seenOrderIds from localStorage
   useEffect(() => {
@@ -346,6 +352,18 @@ export default function OrderList({
                             <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-1.5 py-0.2 rounded mt-1.5 inline-block">
                               {order.areaCode || "No Area Pincode"}
                             </span>
+                            {(() => {
+                              const pincode = order.address?.pincode;
+                              if (!pincode || !appConfig) return null;
+                              const inZone = appConfig.deliveryZones?.localPincodes?.includes(pincode);
+                              return (
+                                <span className={`ml-1.5 text-[9px] font-black px-1.5 py-0.2 rounded inline-block ${
+                                  inZone ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                                }`}>
+                                  {inZone ? "IN ZONE" : "OUT OF ZONE"}
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                         <div className="flex items-center gap-2 mt-2 pt-2 border-t border-zinc-200/50 dark:border-zinc-800/50 text-xs font-semibold text-zinc-500">

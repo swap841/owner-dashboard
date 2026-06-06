@@ -10,7 +10,7 @@ import {
   updateDoc,
   deleteDoc,
   query,
-  orderBy,
+  where,
   serverTimestamp,
 } from "firebase/firestore";
 import { Category } from "../../types";
@@ -21,12 +21,14 @@ const db = getFirestore(app);
  * Fetch all categories sorted by name
  */
 export async function getCategories(): Promise<Category[]> {
-  const q = query(collection(db, "categories"), orderBy("name"));
+  const q = query(collection(db, "categories"));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({
+  const cats = snap.docs.map((d) => ({
     id: d.id,
     ...d.data(),
   })) as Category[];
+  cats.sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
+  return cats;
 }
 
 /**
@@ -57,9 +59,18 @@ export async function updateCategory(id: string, updates: Partial<Category>): Pr
 }
 
 /**
- * Delete a category
+ * Delete a category and clear categoryId from all products referencing it
  */
 export async function deleteCategory(id: string): Promise<void> {
+  // Clear categoryId from products that reference this category
+  const productsQuery = query(collection(db, "products"), where("categoryId", "==", id));
+  const productsSnap = await getDocs(productsQuery);
+  const batchUpdates = productsSnap.docs.map((productDoc) =>
+    updateDoc(doc(db, "products", productDoc.id), { categoryId: "" })
+  );
+  await Promise.all(batchUpdates);
+
+  // Delete the category
   const categoryRef = doc(db, "categories", id);
   await deleteDoc(categoryRef);
 }

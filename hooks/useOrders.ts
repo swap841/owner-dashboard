@@ -3,10 +3,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getActiveOrders, updateOrderStatus, dispatchBasket, getAllOrdersGroup, normalizeOrder } from "../lib/firestore/orders";
 import { Order, OrderStatus } from "../types";
-import { collectionGroup, getDocs, getFirestore, query } from "firebase/firestore";
-import { app } from "../firebaseConfig";
-
-const db = getFirestore(app);
 
 export function useOrders() {
   const queryClient = useQueryClient();
@@ -15,20 +11,30 @@ export function useOrders() {
   const activeOrdersQuery = useQuery<Order[], Error>({
     queryKey: ["activeOrders"],
     queryFn: async () => {
-      const result = await getActiveOrders(null, 100); // Fetch top 100 active for caching
-      return result.orders;
+      try {
+        const result = await getActiveOrders();
+        return result.orders;
+      } catch (err) {
+        console.warn("Active orders query failed (non-critical):", err);
+        return [];
+      }
     },
-    staleTime: 30000, // 30 seconds stale time
-    refetchInterval: 30000, // Automatic poll every 30 seconds
+    staleTime: 30000,
+    refetchInterval: 30000,
   });
 
   // 2. Query for ALL Orders (Unfiltered, used for analytics and earnings)
   const allOrdersQuery = useQuery<Order[], Error>({
     queryKey: ["allOrders"],
     queryFn: async () => {
-      return await getAllOrdersGroup();
+      try {
+        return await getAllOrdersGroup();
+      } catch (err) {
+        console.warn("All orders query failed (non-critical):", err);
+        return [];
+      }
     },
-    staleTime: 60000, // 1 minute stale time for analytics
+    staleTime: 60000,
   });
 
   // 3. Update Order Status Mutation
@@ -47,7 +53,7 @@ export function useOrders() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["activeOrders"] });
       queryClient.invalidateQueries({ queryKey: ["allOrders"] });
-      queryClient.invalidateQueries({ queryKey: ["deliveryBoys"] }); // Delivery boy basket may change
+      queryClient.invalidateQueries({ queryKey: ["deliveryBoys"] });
     },
   });
 

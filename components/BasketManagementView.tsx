@@ -31,6 +31,8 @@ import toast from "react-hot-toast";
 const db = getFirestore(app);
 const MAX_BASKET_WEIGHT = 10000;
 
+interface SnapFallback { docs: Array<{ id: string; data: () => any; ref: any }>; size: number; }
+
 interface BasketItemData {
   orderId: string;
   userId: string;
@@ -67,24 +69,39 @@ export default function BasketManagementView() {
   const [submitting, setSubmitting] = useState(false);
   const [areaFilter, setAreaFilter] = useState("all");
 
+  const safeQuery = async (queryFn: () => Promise<any>, fallback: SnapFallback): Promise<SnapFallback> => {
+    try {
+      const result = await queryFn();
+      return result;
+    } catch (err) {
+      console.warn("Basket query failed (non-critical):", err);
+      return fallback;
+    }
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
+      const emptySnap: SnapFallback = { docs: [], size: 0 };
       const [basketSnap, boySnap, ordersSnap] = await Promise.all([
-        getDocs(query(collectionGroup(db, "basket"))),
-        getDocs(query(collection(db, "deliveryBoys"))),
-        getDocs(
-          query(
-            collectionGroup(db, "orders"),
-            where("status", "in", [
-              "Ready to Dispatch",
-              "Assigned",
-              "Accepted",
-              "Out for Delivery",
-              "Delivered",
-              "Completed",
-            ])
-          )
+        safeQuery(() => getDocs(query(collectionGroup(db, "basket"))), emptySnap),
+        safeQuery(() => getDocs(query(collection(db, "deliveryBoys"))), emptySnap),
+        safeQuery(
+          () =>
+            getDocs(
+              query(
+                collectionGroup(db, "orders"),
+                where("status", "in", [
+                  "Ready to Dispatch",
+                  "Assigned",
+                  "Accepted",
+                  "Out for Delivery",
+                  "Delivered",
+                  "Completed",
+                ])
+              )
+            ),
+          emptySnap
         ),
       ]);
 
@@ -151,12 +168,13 @@ export default function BasketManagementView() {
           assignedDeliveryBoyId: data.assignedDeliveryBoyId,
           outOfCity: !!data.outOfCity,
           rejectionHistory: data.rejectionHistory || [],
+          createdAt: data.createdAt || data.date || null,
         });
       });
       orders.sort((a, b) => {
-        const da = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
-        const db = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
-        return db.getTime() - da.getTime();
+        const da = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : a.createdAt?.seconds ? a.createdAt.seconds * 1000 : a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const db = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : b.createdAt?.seconds ? b.createdAt.seconds * 1000 : b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return db - da;
       });
       setAllOrders(orders);
     } catch (err) {

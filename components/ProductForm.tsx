@@ -90,7 +90,7 @@ export default function ProductForm({ product, categories, onSave, onClose }: Pr
     if (price <= 0) return toast.error("Price must be greater than 0.");
     if (mrp < price) return toast.error("MRP must be greater than or equal to current price.");
     if (stock < 0) return toast.error("Stock cannot be negative.");
-    if (weight <= 0) return toast.error("Weight must be greater than 0.");
+    if (weight <= 0) return toast.error("Quantity must be greater than 0.");
 
     setSubmitting(true);
     try {
@@ -165,7 +165,7 @@ export default function ProductForm({ product, categories, onSave, onClose }: Pr
                 <option value="">Select a category</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
-                    {cat.name}
+                    {cat.displayName || cat.name}
                   </option>
                 ))}
               </select>
@@ -186,10 +186,10 @@ export default function ProductForm({ product, categories, onSave, onClose }: Pr
               />
             </div>
 
-            {/* Weight */}
+            {/* Weight/Quantity Value */}
             <div>
               <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
-                Weight Value *
+                Quantity Value *
               </label>
               <input
                 type="number"
@@ -204,7 +204,7 @@ export default function ProductForm({ product, categories, onSave, onClose }: Pr
             {/* Weight Unit */}
             <div>
               <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
-                Weight Unit *
+                Unit *
               </label>
               <select
                 value={unit}
@@ -212,8 +212,22 @@ export default function ProductForm({ product, categories, onSave, onClose }: Pr
                 required
                 className="w-full px-3.5 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold"
               >
-                <option value="g">Grams (g)</option>
-                <option value="kg">Kilograms (kg)</option>
+                <optgroup label="Weight">
+                  <option value="g">Grams (g)</option>
+                  <option value="kg">Kilograms (kg)</option>
+                </optgroup>
+                <optgroup label="Volume">
+                  <option value="ml">Milliliters (ml)</option>
+                  <option value="l">Liters (L)</option>
+                </optgroup>
+                <optgroup label="Count">
+                  <option value="pc">Piece (pc)</option>
+                  <option value="doz">Dozen (doz)</option>
+                  <option value="pack">Pack</option>
+                  <option value="bunch">Bunch</option>
+                  <option value="bundle">Bundle</option>
+                  <option value="set">Set</option>
+                </optgroup>
               </select>
             </div>
 

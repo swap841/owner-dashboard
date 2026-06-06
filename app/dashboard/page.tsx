@@ -2,12 +2,35 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Component, ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { getAuth, onAuthStateChanged, User } from "firebase/auth";
 import { app } from "@/firebaseConfig";
 import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
+  state = { hasError: false, error: "" };
+  static getDerivedStateFromError(error: Error) { return { hasError: true, error: error.message }; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-8">
+          <div className="text-center max-w-md">
+            <div className="text-4xl mb-4">⚠️</div>
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Something went wrong</h2>
+            <p className="text-sm text-zinc-500 mb-4">{this.state.error}</p>
+            <button onClick={() => { this.setState({ hasError: false, error: "" }); window.location.reload(); }}
+              className="px-4 py-2 bg-emerald-500 text-white rounded-xl font-semibold hover:bg-emerald-600 transition">
+              Reload Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // Icons
 import {
@@ -56,6 +79,12 @@ import EmployeeProgressModal from "@/components/EmployeeProgressModal";
 import DeliveryPartnerManager from "@/components/DeliveryPartnerManager";
 import StoreConfigEditor from "@/components/StoreConfigEditor";
 import PolicyEditor from "@/components/PolicyEditor";
+import DeliveryZoneManager from "@/components/DeliveryZoneManager";
+import APIKeyManager from "@/components/APIKeyManager";
+import SetupWizard from "@/components/SetupWizard";
+import OutOfRadiusOrders from "@/components/OutOfRadiusOrders";
+import PaymentReconciliation from "@/components/PaymentReconciliation";
+import CustomerAnalytics from "@/components/CustomerAnalytics";
 
 // Hooks
 import { useProducts } from "@/hooks/useProducts";
@@ -68,7 +97,7 @@ import { saveOwnerDetailsToDB } from "@/src/ownerUtils";
 // Types
 import { Product, Category, Order, DeliveryBoy, Refund, OrderStatus } from "@/types";
 import { exportProductsToCSV } from "@/lib/firestore/products";
-import { groupOrdersIntoBaskets, DeliveryBasket } from "@/lib/firestore/orders";
+import { exportOrdersToCSV, groupOrdersIntoBaskets, DeliveryBasket } from "@/lib/firestore/orders";
 
 const auth = getAuth(app);
 
@@ -111,7 +140,16 @@ function DashboardContent() {
         toast.error("Please sign in to access the owner portal.");
         router.push("/");
       } else {
-        await saveOwnerDetailsToDB(currentUser).catch(console.error);
+        try {
+          const authorized = await saveOwnerDetailsToDB(currentUser);
+          if (!authorized) {
+            console.warn("[Dashboard] Owner email not in OWNER_EMAILS:", currentUser.email);
+          } else {
+            console.log("[Dashboard] Owner auth verified:", currentUser.email);
+          }
+        } catch (err) {
+          console.error("[Dashboard] saveOwnerDetailsToDB failed:", err);
+        }
         setUser(currentUser);
         queryClient.invalidateQueries();
       }
@@ -265,10 +303,11 @@ function DashboardContent() {
   // Group categories mapping
   const categoryNamesMap: Record<string, string> = {};
   categories.forEach((c: Category) => {
-    if (c.id) categoryNamesMap[c.id] = c.name;
+    if (c.id) categoryNamesMap[c.id] = c.displayName || c.name;
   });
 
   return (
+    <ErrorBoundary>
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 flex flex-col md:flex-row">
       <Sidebar
         currentView={currentView}
@@ -359,7 +398,7 @@ function DashboardContent() {
                 <option value="">All Categories</option>
                 {categories.map((cat: Category) => (
                   <option key={cat.id} value={cat.id}>
-                    {cat.name}
+                    {cat.displayName || cat.name}
                   </option>
                 ))}
               </select>
@@ -459,7 +498,7 @@ function DashboardContent() {
 
                           <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/50 mt-3 flex items-center justify-between">
                             <div className="flex flex-col">
-                              <span className="text-[10px] font-bold text-zinc-400">Price</span>
+                              <span className="text-[10px] font-bold text-zinc-400">Price / {p.unit || "pc"}</span>
                               <div className="flex items-center gap-1 font-extrabold text-sm text-zinc-950 dark:text-white">
                                 <IndianRupee className="w-3.5 h-3.5 text-zinc-400" />
                                 <span>{p.price.toFixed(2)}</span>
@@ -576,8 +615,11 @@ function DashboardContent() {
                       </div>
                       <div className="flex flex-col">
                         <span className="font-extrabold text-zinc-900 dark:text-white text-sm">
-                          {c.name}
+                          {c.displayName || c.name}
                         </span>
+                        {c.displayName && c.displayName !== c.name && (
+                          <span className="text-[10px] text-zinc-400">{c.name}</span>
+                        )}
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-black self-start mt-1 shadow-sm ${c.active ? "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-500/10" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-zinc-300/10 dark:border-zinc-700/10"}`}>
                           {c.active ? "Active" : "Inactive"}
                         </span>
@@ -625,6 +667,26 @@ function DashboardContent() {
               <p className="text-xs text-zinc-400 font-medium mt-1">
                 Active uncompleted delivery queue. Real-time automatic background syncing.
               </p>
+              <div className="flex items-center gap-2 mt-3">
+                <button
+                  onClick={() => {
+                    const csv = exportOrdersToCSV(allOrders);
+                    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `orders_export_${Date.now()}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    toast.success(`Exported ${allOrders.length} orders to CSV`);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition border border-emerald-200 dark:border-emerald-800"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Export CSV ({allOrders.length})
+                </button>
+              </div>
             </div>
 
             <OrderList
@@ -831,6 +893,26 @@ function DashboardContent() {
         {currentView === "storeConfig" && <StoreConfigEditor />}
 
         {/* ====================================================================
+            🔑 VIEW: API Key Manager
+            ==================================================================== */}
+        {currentView === "apiKeys" && <APIKeyManager />}
+
+        {/* ====================================================================
+            📍 VIEW: Delivery Zones
+            ==================================================================== */}
+        {currentView === "deliveryZones" && <DeliveryZoneManager />}
+
+        {/* ====================================================================
+            🧭 VIEW: Out of Radius Orders
+            ==================================================================== */}
+        {currentView === "outOfRadiusOrders" && <OutOfRadiusOrders />}
+
+        {/* ====================================================================
+            ✨ VIEW: Setup Wizard
+            ==================================================================== */}
+        {currentView === "setupWizard" && <SetupWizard onComplete={() => setCurrentView("home")} />}
+
+        {/* ====================================================================
             💰 VIEW: Earnings & Analytics
             ==================================================================== */}
 
@@ -974,6 +1056,11 @@ function DashboardContent() {
             💰 VIEW: Earnings & Analytics
             ==================================================================== */}
         {currentView === "earnings" && <EarningsAnalyticsView />}
+
+        {/* ====================================================================
+            📊 VIEW: Customer Analytics
+            ==================================================================== */}
+        {currentView === "customerAnalytics" && <CustomerAnalytics allOrders={allOrders} />}
 
         {/* ====================================================================
             🔁 VIEW: Refunds Management
@@ -1131,6 +1218,11 @@ function DashboardContent() {
           <DeliveryPartnerManager />
         )}
 
+        {/* ====================================================================
+            🔄 VIEW: Payment Reconciliation
+            ==================================================================== */}
+        {currentView === "reconciliation" && <PaymentReconciliation />}
+
         {/* Policy Pages */}
         {currentView === "policyShipping" && <PolicyEditor policyType="shipping" />}
         {currentView === "policyRefund" && <PolicyEditor policyType="refund" />}
@@ -1234,6 +1326,7 @@ function DashboardContent() {
 
       <Toaster position="bottom-right" toastOptions={{ duration: 3000 }} />
     </div>
+    </ErrorBoundary>
   );
 }
 

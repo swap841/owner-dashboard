@@ -3,8 +3,8 @@
 import { app } from "../../firebaseConfig";
 import {
   getFirestore,
-  collectionGroup,
   collection,
+  collectionGroup,
   doc,
   getDocs,
   getDoc,
@@ -33,7 +33,7 @@ export interface PaginatedOrdersResult {
 /**
  * Normalizes a Firestore order document into a clean Order interface.
  */
-export function normalizeOrder(docId: string, userId: string, data: any): Order {
+export function normalizeOrder(docId: string, userId: string | undefined, data: any): Order {
   const items = Array.isArray(data.items) ? data.items : [];
   
   // Recalculate total weight from items just to ensure robustness
@@ -50,7 +50,7 @@ export function normalizeOrder(docId: string, userId: string, data: any): Order 
 
   return {
     id: docId,
-    userId: userId,
+    userId: userId || "unknown",
     address: addr,
     items: items.map((i: any) => ({
       productId: i.productId || i.id || "",
@@ -73,6 +73,7 @@ export function normalizeOrder(docId: string, userId: string, data: any): Order 
     outOfCity: !!data.outOfCity,
     rejectionHistory: data.rejectionHistory || [],
     ticketContactId: data.ticketContactId || undefined,
+    createdAt: data.createdAt || data.date || null,
   };
 }
 
@@ -80,42 +81,43 @@ export function normalizeOrder(docId: string, userId: string, data: any): Order 
  * Fetches active/undelivered orders paginated.
  * Uses collectionGroup query across all users' subcollections.
  */
-export async function getActiveOrders(
-  lastVisibleDoc: QueryDocumentSnapshot<DocumentData> | null = null,
-  limitSize: number = 50
-): Promise<PaginatedOrdersResult> {
+export async function getActiveOrders(): Promise<PaginatedOrdersResult> {
   const activeStatuses: OrderStatus[] = [
     "Pending",
     "Packing",
     "Assigned",
+    "Accepted",
     "Ready to Dispatch",
     "Out for Delivery",
+    "Awaiting Verification",
   ];
+  const activeStatusesLower = activeStatuses.map(s => s.toLowerCase());
 
-  // No orderBy to avoid composite index requirement on collectionGroup
-  const q = query(
-    collectionGroup(db, "orders"),
-    where("status", "in", activeStatuses),
-    limit(limitSize)
-  );
+  // Use bare collectionGroup query (no where filter — avoids composite index on Spark plan)
+  // Filter client-side by status
+  const q = query(collectionGroup(db, "orders"));
 
   const snap = await getDocs(q);
   const orders: Order[] = [];
 
   snap.docs.forEach((d) => {
-    const userId = d.ref.parent.parent?.id || "N/A";
-    orders.push(normalizeOrder(d.id, userId, d.data()));
+    const data = d.data();
+    const status = (data.status || "").toLowerCase();
+    if (activeStatusesLower.includes(status)) {
+      const userId = d.ref.parent.parent?.id || data.userId || "N/A";
+      orders.push(normalizeOrder(d.id, userId, data));
+    }
   });
 
   // Sort client-side by createdAt descending
   orders.sort((a, b) => {
-    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : a.createdAt?.seconds ? a.createdAt.seconds * 1000 : a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : b.createdAt?.seconds ? b.createdAt.seconds * 1000 : b.createdAt ? new Date(b.createdAt).getTime() : 0;
     return dateB - dateA;
   });
 
   const lastVisible = snap.docs.length > 0 ? snap.docs[snap.docs.length - 1] : null;
-  const hasMore = snap.docs.length === limitSize;
+  const hasMore = false; // Not paginated — all active orders returned
 
   return {
     orders,
@@ -128,17 +130,18 @@ export async function getActiveOrders(
  * Fetches ALL orders across the database, optionally filtered by status (unpaginated/paginated helper for analytics).
  */
 export async function getAllOrdersGroup(): Promise<Order[]> {
-  // No orderBy to avoid composite index requirement on collectionGroup
+  // Use bare collectionGroup query (no where filter — avoids composite index on Spark plan)
   const q = query(collectionGroup(db, "orders"));
   const snap = await getDocs(q);
   const orders = snap.docs.map((d) => {
-    const userId = d.ref.parent.parent?.id || "N/A";
-    return normalizeOrder(d.id, userId, d.data());
+    const data = d.data();
+    const userId = d.ref.parent.parent?.id || data.userId || "N/A";
+    return normalizeOrder(d.id, userId, data);
   });
   // Sort client-side by createdAt descending
   orders.sort((a, b) => {
-    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : a.createdAt?.seconds ? a.createdAt.seconds * 1000 : a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : b.createdAt?.seconds ? b.createdAt.seconds * 1000 : b.createdAt ? new Date(b.createdAt).getTime() : 0;
     return dateB - dateA;
   });
   return orders;
@@ -298,4 +301,62 @@ export async function dispatchBasket(
 
   // 2. Commit batch write transactionally
   await batch.commit();
+}
+
+/**
+ * Generates CSV content from a list of orders for export.
+ */
+export function exportOrdersToCSV(orders: Order[]): string {
+  const headers = [
+    "Order ID", "Status", "Total (INR)", "Payment Method", "Payment Status",
+    "Customer Name", "Customer Phone", "Address", "Area Code",
+    "Items Count", "Total Weight (g)",
+    "Assigned Worker", "Assigned Delivery Boy",
+    "Created At", "Delivered At", "Cancelled At",
+    "Out of City", "Cancel Reason",
+    "Actual Payment Method", "Actual Collected",
+    "Reconciliation Status", "Difference",
+  ];
+
+  const safe = (v: any) => {
+    if (v === null || v === undefined) return "";
+    const s = String(v).replace(/"/g, '""');
+    return `"${s}"`;
+  };
+
+  const rows = orders.map((o) => {
+    const tsStr = (ts: any) => {
+      if (!ts) return "";
+      if (ts?.toDate) return ts.toDate().toISOString();
+      if (ts?.seconds) return new Date(ts.seconds * 1000).toISOString();
+      return String(ts);
+    };
+
+    return [
+      safe(o.id),
+      safe(o.status),
+      o.totalAmount || 0,
+      safe(o.payment?.method),
+      safe(o.payment?.status),
+      safe(o.address?.name),
+      safe(o.address?.phone),
+      safe(o.address?.addressLine),
+      safe(o.areaCode),
+      o.items?.length || 0,
+      o.totalWeight || 0,
+      safe(o.assignedWorkerId),
+      safe(o.assignedDeliveryBoyId),
+      tsStr(o.createdAt),
+      tsStr(o.deliveredAt),
+      tsStr(o.cancelledAt),
+      o.outOfCity ? "Yes" : "No",
+      safe(o.cancelReason),
+      safe(o.actualPayment?.method),
+      o.actualPayment?.totalCollected || 0,
+      safe(o.reconciliation?.status),
+      o.reconciliation?.difference || 0,
+    ];
+  });
+
+  return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
 }
