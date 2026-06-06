@@ -29,7 +29,6 @@ const TABS: TabConfig[] = [
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "features", label: "Features", icon: ToggleLeft },
   { id: "seo", label: "SEO & Contact", icon: Shield },
-  { id: "categories", label: "Categories", icon: LayoutGrid },
 ];
 
 const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || "https://grocery-server-10ct.onrender.com";
@@ -614,59 +613,6 @@ export default function StoreConfigEditor() {
           </div>
         );
 
-      case "categories":
-        return (
-          <div className="space-y-4">
-            <h2 className="text-sm font-bold text-zinc-800">Category Templates</h2>
-            <p className="text-xs text-zinc-500">Predefined categories for new stores. These are used when setting up a new business type.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-semibold text-zinc-500">Predefined Categories</label>
-                <div className="mt-1 space-y-1">
-                  {config.categories.predefined.map((cat, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <input type="text" value={cat}
-                        onChange={e => {
-                          const updated = [...config.categories.predefined];
-                          updated[i] = e.target.value;
-                          update("categories", "predefined", updated);
-                        }}
-                        className="flex-1 px-2 py-1 rounded-lg border border-zinc-200 text-xs focus:outline-none" />
-                      <button onClick={() => {
-                        const updated = config.categories.predefined.filter((_, idx) => idx !== i);
-                        update("categories", "predefined", updated);
-                      }} className="text-red-500 hover:text-red-700 text-xs">✕</button>
-                    </div>
-                  ))}
-                  <button onClick={() => update("categories", "predefined", [...config.categories.predefined, ""])}
-                    className="text-xs text-emerald-600 hover:text-emerald-800 font-semibold mt-1">+ Add category</button>
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-zinc-500">Custom Categories</label>
-                <div className="mt-1 space-y-1">
-                  {config.categories.custom.map((cat, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <input type="text" value={cat}
-                        onChange={e => {
-                          const updated = [...config.categories.custom];
-                          updated[i] = e.target.value;
-                          update("categories", "custom", updated);
-                        }}
-                        className="flex-1 px-2 py-1 rounded-lg border border-zinc-200 text-xs focus:outline-none" />
-                      <button onClick={() => {
-                        const updated = config.categories.custom.filter((_, idx) => idx !== i);
-                        update("categories", "custom", updated);
-                      }} className="text-red-500 hover:text-red-700 text-xs">✕</button>
-                    </div>
-                  ))}
-                  <button onClick={() => update("categories", "custom", [...config.categories.custom, ""])}
-                    className="text-xs text-emerald-600 hover:text-emerald-800 font-semibold mt-1">+ Add custom</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
     }
   };
 

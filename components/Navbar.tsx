@@ -96,7 +96,7 @@ export default function Navbar() {
   // 🔥 FULL NAVBAR FOR ALL OTHER PAGES
   // ===========================================
   return (
-    <nav className="w-full bg-white shadow-md fixed top-0 left-0 z-50">
+    <nav className="w-full bg-white dark:bg-zinc-900 shadow-md fixed top-0 left-0 z-50 border-b border-zinc-200 dark:border-zinc-800">
       <div className="max-w-6xl mx-auto px-4 py-0 flex justify-between items-center h-16">
         <Link href="/" className="text-4xl font-bold text-green-600">
           Owner Hub
