@@ -558,7 +558,17 @@ export default function StoreConfigEditor() {
               </select>
             </div>
             {renderInput("SMS API Key", "notifications", "smsApiKey", "password")}
+            {config.notifications.smsProvider === "msg91" && renderInput("MSG91 Flow ID", "notifications", "smsFlowId", "password")}
             {renderInput("WhatsApp API Key", "notifications", "whatsAppApiKey", "password")}
+            {renderInput("WhatsApp Phone Number ID", "notifications", "whatsAppPhoneNumberId", "text")}
+            {renderInput("WhatsApp Webhook URL", "notifications", "whatsappWebhook", "text")}
+            <div className="border-t border-zinc-200 pt-4 mt-4">
+              <h3 className="text-xs font-bold text-zinc-700 mb-3">Voice Call Alerts (Twilio)</h3>
+              {renderInput("Twilio Account SID", "notifications", "twilioAccountSid", "text")}
+              {renderInput("Twilio Auth Token", "notifications", "twilioAuthToken", "password")}
+              {renderInput("Twilio Phone Number", "notifications", "twilioPhoneNumber", "text")}
+              {renderInput("Voice Webhook URL", "notifications", "voiceWebhookUrl", "text")}
+            </div>
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
               <p className="text-[10px] text-blue-700 font-medium">
                 Notification templates (SMS/WhatsApp) can use variables: {"{orderId}"}, {"{amount}"}, {"{name}"}, {"{status}"}

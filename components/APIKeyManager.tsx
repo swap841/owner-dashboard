@@ -43,6 +43,11 @@ const KEY_TEMPLATES: Record<string, { label: string; docs: string; fields: strin
     docs: "https://aistudio.google.com/apikey",
     fields: ["apiKey"],
   },
+  imgbb: {
+    label: "ImgBB (Image Uploads)",
+    docs: "https://api.imgbb.com/",
+    fields: ["apiKey"],
+  },
 };
 
 export default function APIKeyManager() {

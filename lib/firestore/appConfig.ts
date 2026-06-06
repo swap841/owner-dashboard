@@ -75,7 +75,14 @@ export interface AppConfig {
     whatsappTemplates: Record<string, string>;
     smsProvider: string;
     smsApiKey: string;
+    smsFlowId: string;
     whatsAppApiKey: string;
+    whatsAppPhoneNumberId: string;
+    twilioAccountSid: string;
+    twilioAuthToken: string;
+    twilioPhoneNumber: string;
+    voiceWebhookUrl: string;
+    whatsappWebhook: string;
   };
   deliveryPartners: {
     primary: string;
@@ -83,10 +90,6 @@ export interface AppConfig {
     partnerCredentials: Record<string, { apiKey: string; apiSecret: string; enabled: boolean }>;
   };
   apiKeys: Record<string, { key: string; secret: string; testMode: boolean; lastTested: string }>;
-  categories: {
-    predefined: string[];
-    custom: string[];
-  };
   updatedAt?: any;
 }
 
@@ -166,7 +169,14 @@ export function getDefaultConfig(): AppConfig {
       whatsappTemplates: {},
       smsProvider: "",
       smsApiKey: "",
+      smsFlowId: "",
       whatsAppApiKey: "",
+      whatsAppPhoneNumberId: "",
+      twilioAccountSid: "",
+      twilioAuthToken: "",
+      twilioPhoneNumber: "",
+      voiceWebhookUrl: "",
+      whatsappWebhook: "",
     },
     deliveryPartners: {
       primary: "",
@@ -174,10 +184,6 @@ export function getDefaultConfig(): AppConfig {
       partnerCredentials: {},
     },
     apiKeys: {},
-    categories: {
-      predefined: ["Fruits", "Vegetables", "Dairy", "Bakery", "Beverages", "Snacks", "Household", "Personal Care"],
-      custom: [],
-    },
   };
 }
 
