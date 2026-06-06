@@ -33,7 +33,6 @@ const TABS: TabConfig[] = [
 ];
 
 const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || "https://grocery-server-10ct.onrender.com";
-const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_KEY || "";
 
 export default function StoreConfigEditor() {
   const [config, setConfig] = useState<AppConfig | null>(null);
@@ -176,9 +175,15 @@ export default function StoreConfigEditor() {
     try {
       await updateAppConfig(config);
       await saveAboutUs();
+      const { getAuth } = await import("firebase/auth");
+      const auth = getAuth();
+      const token = await auth.currentUser?.getIdToken();
       await fetch(`${SERVER_URL}/api/invalidate-cache`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-key": ADMIN_KEY },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       }).catch(() => {});
       toast.success("Config saved! Server & CDN caches cleared.");
     } catch {
@@ -190,9 +195,15 @@ export default function StoreConfigEditor() {
   const handleRefresh = async () => {
     clearAppConfigCache();
     await fetchConfig();
+    const { getAuth } = await import("firebase/auth");
+    const auth = getAuth();
+    const token = await auth.currentUser?.getIdToken();
     await fetch(`${SERVER_URL}/api/invalidate-cache`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-admin-key": ADMIN_KEY },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     }).catch(() => {});
     toast.success("Config refreshed & cache cleared");
   };

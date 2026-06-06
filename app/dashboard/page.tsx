@@ -102,15 +102,20 @@ import { exportOrdersToCSV, groupOrdersIntoBaskets, DeliveryBasket } from "@/lib
 const auth = getAuth(app);
 
 const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || "";
-const CACHE_CLEAR_KEY = process.env.NEXT_PUBLIC_CACHE_CLEAR_KEY || "";
 
 async function clearProductCache() {
   try {
-    if (!SERVER_URL || !CACHE_CLEAR_KEY) return;
+    if (!SERVER_URL) return;
+    const { getAuth } = await import("firebase/auth");
+    const auth = getAuth();
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) return;
     await fetch(`${SERVER_URL}/api/clear-cache`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: CACHE_CLEAR_KEY }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
     });
   } catch (err) {
     console.warn("Cache clear failed (non-critical):", err);

@@ -41,11 +41,14 @@ export function useRefunds() {
       userId: string;
       items: any[];
     }) => {
+      const { getAuth } = await import("firebase/auth");
+      const auth = getAuth();
+      const token = await auth.currentUser?.getIdToken();
       const response = await fetch("/api/razorpay/refund", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // Add auth bearer token if needed in production
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           paymentId,

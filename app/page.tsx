@@ -134,21 +134,21 @@ export default function OwnerLoginPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-md w-full space-y-8 p-10 bg-white rounded-xl shadow-2xl border border-gray-200">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-950 py-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-md w-full space-y-8 p-10 bg-white dark:bg-zinc-900 rounded-xl shadow-2xl border border-gray-200 dark:border-zinc-800">
                 <div>
-                    <h2 className="mt-6 text-center text-3xl font-extrabold text-green-700">
+                    <h2 className="mt-6 text-center text-3xl font-extrabold text-green-700 dark:text-green-400">
                         {isSigningUp ? 'Owner Sign Up' : 'Owner Sign In'}
                     </h2>
-                    <p className="mt-2 text-center text-sm text-gray-600">
+                    <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
                         Use your authorized email and password.
                     </p>
                 </div>
                 
                 {/* Error message display */}
                 {errorMessage && (
-                    <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
-                        <p className="text-red-700 text-sm">{errorMessage}</p>
+                    <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 mb-4">
+                        <p className="text-red-700 dark:text-red-400 text-sm">{errorMessage}</p>
                     </div>
                 )}
 
@@ -164,7 +164,7 @@ export default function OwnerLoginPage() {
                                 type="email"
                                 autoComplete="email"
                                 required
-                                className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
+                                className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 dark:border-zinc-700 placeholder-gray-500 dark:placeholder-zinc-500 text-gray-900 dark:text-white dark:bg-zinc-800 rounded-t-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
                                 placeholder="Email address"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -180,7 +180,7 @@ export default function OwnerLoginPage() {
                                 type="password"
                                 autoComplete={isSigningUp ? "new-password" : "current-password"}
                                 required
-                                className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
+                                className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 dark:border-zinc-700 placeholder-gray-500 dark:placeholder-zinc-500 text-gray-900 dark:text-white dark:bg-zinc-800 rounded-b-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
                                 placeholder="Password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
@@ -203,9 +203,9 @@ export default function OwnerLoginPage() {
                     <button
                         onClick={() => {
                             setIsSigningUp(!isSigningUp);
-                            setErrorMessage(''); // Clear error when switching modes
+                            setErrorMessage('');
                         }}
-                        className="text-sm font-medium text-blue-600 hover:text-blue-500"
+                        className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500"
                     >
                         {isSigningUp
                             ? 'Already have an account? Sign In'

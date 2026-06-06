@@ -19,9 +19,15 @@ export async function paySalary(
   payment: Omit<SalaryPayment, "id">
 ): Promise<void> {
   if (SERVER_URL) {
+    const { getAuth } = await import("firebase/auth");
+    const auth = getAuth();
+    const token = await auth.currentUser?.getIdToken();
     const res = await fetch(`${SERVER_URL}/paySalary`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({
         collection: col,
         personId,

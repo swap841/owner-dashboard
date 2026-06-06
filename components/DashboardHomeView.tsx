@@ -108,8 +108,6 @@ export default function DashboardHomeView({ onNavigate }: DashboardHomeViewProps
         const activeCoupons = couponsSnap.docs.filter((d: any) => d.data().active === true);
         const unreadContacts = contactsSnap.docs.filter((d: any) => d.data().read !== true);
 
-        console.log("[DASHBOARD] todayRevenue:", todayRevenue, "activeCoupons:", activeCoupons.length, "unreadContacts:", unreadContacts.length);
-
         setPendingOrders(pendingOrdersDocs.map((d: any) => {
           const data = d.data();
           return { id: d.id, userId: data.userId || "N/A", ...data };
