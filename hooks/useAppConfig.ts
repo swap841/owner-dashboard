@@ -100,7 +100,41 @@ export function useAppConfig() {
       const unsubscribe = onSnapshot(ref, (snap) => {
         unsubscribe();
         if (snap.exists()) {
-          resolve({ ...DEFAULT_CONFIG, ...snap.data() } as AppConfig);
+          const raw = snap.data() as any;
+          // Map nested config structure to flat AppConfig interface
+          const mapped: AppConfig = {
+            storeName: raw.business?.name || DEFAULT_CONFIG.storeName,
+            storeLogo: raw.business?.logoUrl || DEFAULT_CONFIG.storeLogo,
+            primaryColor: raw.business?.primaryColor || DEFAULT_CONFIG.primaryColor,
+            accentColor: raw.business?.accentColor || DEFAULT_CONFIG.accentColor,
+            darkModeEnabled: raw.features?.darkMode ?? DEFAULT_CONFIG.darkModeEnabled,
+            shopLocation: {
+              address: raw.store?.location?.address || DEFAULT_CONFIG.shopLocation.address,
+              lat: raw.store?.location?.lat || DEFAULT_CONFIG.shopLocation.lat,
+              lng: raw.store?.location?.lng || DEFAULT_CONFIG.shopLocation.lng,
+              googleMapsLink: raw.store?.location?.googleMapsLink || "",
+              landmark: raw.store?.location?.landmark || "",
+              directions: raw.store?.location?.directions || "",
+            },
+            contactInfo: {
+              phone: raw.contact?.phone || DEFAULT_CONFIG.contactInfo.phone,
+              phoneSecondary: raw.contact?.phoneSecondary || "",
+              email: raw.contact?.email || DEFAULT_CONFIG.contactInfo.email,
+              emailOrders: raw.contact?.emailOrders || "",
+              whatsappNumber: raw.contact?.whatsappNumber || raw.notifications?.whatsAppPhoneNumberId || "",
+              workingHours: raw.contact?.workingHours || DEFAULT_CONFIG.contactInfo.workingHours,
+              socialMedia: raw.contact?.socialMedia || DEFAULT_CONFIG.contactInfo.socialMedia,
+            },
+            aboutUs: raw.aboutUs || DEFAULT_CONFIG.aboutUs,
+            deliverySettings: {
+              radiusKm: raw.deliveryZones?.maxLocalWeightKg || DEFAULT_CONFIG.deliverySettings.radiusKm,
+              deliveryCharge: raw.store?.deliveryCharge || DEFAULT_CONFIG.deliverySettings.deliveryCharge,
+              freeDeliveryAbove: raw.store?.freeDeliveryAbove || DEFAULT_CONFIG.deliverySettings.freeDeliveryAbove,
+              estimatedTime: raw.deliveryZones?.estimatedDeliveryHours || DEFAULT_CONFIG.deliverySettings.estimatedTime,
+              timeSlots: raw.deliverySettings?.timeSlots || DEFAULT_CONFIG.deliverySettings.timeSlots,
+            },
+          };
+          resolve(mapped);
         } else {
           resolve(DEFAULT_CONFIG);
         }

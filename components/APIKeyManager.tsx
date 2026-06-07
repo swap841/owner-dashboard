@@ -237,7 +237,7 @@ export default function APIKeyManager() {
       <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
         <h3 className="text-xs font-bold text-emerald-800 mb-2 flex items-center gap-1"><Shield className="w-3 h-3" /> Security Notes</h3>
         <ul className="text-[10px] text-emerald-700 space-y-1">
-          <li>Keys are stored in Firestore `config/appConfig` and loaded by server every hour</li>
+          <li>Keys are stored in Firestore `appConfig/settings` and loaded by server every hour</li>
           <li>Call <code className="bg-emerald-100 px-1 rounded">/api/refresh-config</code> to force immediate key reload</li>
           <li>Existing keys are masked by default — only you can view them</li>
           <li>No keys stored in code, environment variables, or build artifacts</li>

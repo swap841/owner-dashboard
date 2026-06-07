@@ -98,7 +98,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const handleFinish = async () => {
     setSaving(true);
     try {
-      await setDoc(doc(db, "config", "appConfig"), { ...config, updatedAt: serverTimestamp() });
+      await setDoc(doc(db, "appConfig", "settings"), { ...config, updatedAt: serverTimestamp() });
       toast.success("Setup complete! Your store is ready.");
       setSetupCompleted(true);
       onComplete();

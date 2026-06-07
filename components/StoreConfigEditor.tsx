@@ -174,6 +174,19 @@ export default function StoreConfigEditor() {
     try {
       await updateAppConfig(config);
       await saveAboutUs();
+
+      // Sync branding to contactInfo/info so customer website components reflect changes
+      const { updateContactInfo } = await import("@/lib/firestore/contacts");
+      await updateContactInfo({
+        storeName: config.business.name,
+        logoUrl: config.business.logoUrl,
+        phone: config.contact.phone,
+        email: config.contact.email,
+        address: config.contact.address,
+        taxPercentage: config.store.taxPercent,
+        freeDeliveryAbove: config.store.freeDeliveryAbove,
+      });
+
       const { getAuth } = await import("firebase/auth");
       const auth = getAuth();
       const token = await auth.currentUser?.getIdToken();

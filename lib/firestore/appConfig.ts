@@ -93,7 +93,8 @@ export interface AppConfig {
   updatedAt?: any;
 }
 
-const CONFIG_DOC_ID = "appConfig";
+const CONFIG_DOC_ID = "settings";
+const CONFIG_COLLECTION = "appConfig";
 
 export function getDefaultConfig(): AppConfig {
   return {
@@ -196,7 +197,7 @@ export async function getAppConfig(forceRefresh = false): Promise<AppConfig> {
     return cachedConfig;
   }
   try {
-    const snap = await getDoc(doc(db, "config", CONFIG_DOC_ID));
+    const snap = await getDoc(doc(db, CONFIG_COLLECTION, CONFIG_DOC_ID));
     if (snap.exists()) {
       const data = { id: snap.id, ...snap.data() } as AppConfig;
       cachedConfig = data;
@@ -204,7 +205,7 @@ export async function getAppConfig(forceRefresh = false): Promise<AppConfig> {
       return data;
     }
     const defaults = getDefaultConfig();
-    await setDoc(doc(db, "config", CONFIG_DOC_ID), { ...defaults, updatedAt: serverTimestamp() });
+    await setDoc(doc(db, CONFIG_COLLECTION, CONFIG_DOC_ID), { ...defaults, updatedAt: serverTimestamp() });
     cachedConfig = defaults;
     cacheTimestamp = Date.now();
     return defaults;
@@ -215,13 +216,13 @@ export async function getAppConfig(forceRefresh = false): Promise<AppConfig> {
 }
 
 export async function updateAppConfig(updates: Partial<AppConfig>): Promise<void> {
-  await updateDoc(doc(db, "config", CONFIG_DOC_ID), { ...updates, updatedAt: serverTimestamp() });
+  await updateDoc(doc(db, CONFIG_COLLECTION, CONFIG_DOC_ID), { ...updates, updatedAt: serverTimestamp() });
   cachedConfig = null;
 }
 
 export async function seedDefaultConfig(): Promise<AppConfig> {
   const defaults = getDefaultConfig();
-  await setDoc(doc(db, "config", CONFIG_DOC_ID), { ...defaults, updatedAt: serverTimestamp() });
+  await setDoc(doc(db, CONFIG_COLLECTION, CONFIG_DOC_ID), { ...defaults, updatedAt: serverTimestamp() });
   cachedConfig = defaults;
   return defaults;
 }
