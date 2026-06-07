@@ -79,9 +79,9 @@ export default function DashboardHomeView({ onNavigate }: DashboardHomeViewProps
           safeQuery(() => getDocs(collection(db, "coupons")), emptySnap),
         ]);
 
-        const activeStatuses = ["pending", "packing", "ready to dispatch", "assigned", "accepted", "out for delivery", "awaiting verification"];
+        const activeStatuses = ["Pending", "Packing", "Ready to Dispatch", "Assigned", "Accepted", "Out for Delivery", "Awaiting Verification"];
         const pendingOrdersDocs = allOrdersSnap.docs.filter((d: any) => {
-          const status = (d.data().status || "").toLowerCase();
+          const status = d.data().status || "";
           return activeStatuses.includes(status);
         });
 
