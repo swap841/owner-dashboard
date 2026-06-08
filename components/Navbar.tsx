@@ -7,6 +7,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { getAuth, onAuthStateChanged, signOut, User } from "firebase/auth";
 import { app } from "@/firebaseConfig";
 import { signInWithGoogleOwner } from "@/src/ownerUtils";
+import { useAppConfig } from "@/hooks/useAppConfig";
 
 const auth = getAuth(app);
 const FALLBACK_IMAGE_URL = "/fallback-image.png";
@@ -15,6 +16,8 @@ export default function Navbar() {
   const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
   const pathname = usePathname();   // <-- Detect current page
+  const { config: appConfig } = useAppConfig();
+  const storeName = appConfig?.storeName || "Owner Hub";
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -99,7 +102,7 @@ export default function Navbar() {
     <nav className="w-full bg-white dark:bg-zinc-900 shadow-md fixed top-0 left-0 z-50 border-b border-zinc-200 dark:border-zinc-800">
       <div className="max-w-6xl mx-auto px-4 py-0 flex justify-between items-center h-16">
         <Link href="/" className="text-4xl font-bold text-green-600">
-          Owner Hub
+          {storeName}
         </Link>
 
         <div className="flex items-center gap-4">

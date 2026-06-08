@@ -7,6 +7,7 @@ import { getAuth, onAuthStateChanged, User, updateProfile } from 'firebase/auth'
 import { app } from '@/firebaseConfig';
 import { useRouter } from 'next/navigation';
 import { fetchOwnerProfile, updateOwnerDetails, FullOwnerProfile, addOwnerPartner } from '@/src/ownerUtils'; 
+import { useAppConfig } from "@/hooks/useAppConfig";
 
 const auth = getAuth(app);
 
@@ -14,6 +15,8 @@ export default function OwnerProfilePage() {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<FullOwnerProfile | null>(null);
     const [loading, setLoading] = useState(true);
+    const { config: appConfig } = useAppConfig();
+    const storeName = appConfig?.storeName || "Owner";
     
     // Form States
     const [newName, setNewName] = useState('');
@@ -87,7 +90,7 @@ export default function OwnerProfilePage() {
         <div className="min-h-screen bg-gray-50 py-20">
             <div className="max-w-4xl mx-auto p-6 bg-white rounded-xl shadow-2xl">
                 <h1 className="text-4xl font-extrabold text-green-700 mb-6 border-b pb-3">
-                    👤 Owner Management Portal
+                    👤 {storeName} Management Portal
                 </h1>
                 
                 {/* --- Current Details --- */}

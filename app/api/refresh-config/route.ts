@@ -4,7 +4,7 @@ const ADMIN_KEY = process.env.ADMIN_KEY || "";
 
 export async function POST(req: NextRequest) {
   try {
-    const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://grocery-server-10ct.onrender.com";
+    const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://grocery-server-u2qq.onrender.com";
     fetch(`${serverUrl}/api/invalidate-cache`, {
       method: "POST",
       headers: {

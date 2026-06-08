@@ -32,6 +32,7 @@ import {
   Moon,
   Star,
 } from "lucide-react";
+import { useAppConfig } from "@/hooks/useAppConfig";
 
 export type DashboardView =
   | "home"
@@ -74,6 +75,8 @@ interface SidebarProps {
 export default function Sidebar({ currentView, onViewChange, ownerName }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const { config: appConfig } = useAppConfig();
+  const storeName = appConfig?.storeName || "Owner Hub";
 
   useEffect(() => {
     const isDark = localStorage.getItem("theme") === "dark" ||
@@ -130,10 +133,10 @@ export default function Sidebar({ currentView, onViewChange, ownerName }: Sideba
       <div className="md:hidden fixed top-0 left-0 w-full bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 h-16 flex items-center justify-between px-4 z-40">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center font-bold text-white shadow-md shadow-emerald-500/20">
-            O
+            {storeName?.charAt(0) || "O"}
           </div>
           <span className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
-            Owner Dashboard
+            {storeName}
           </span>
         </div>
         <button
@@ -162,11 +165,11 @@ export default function Sidebar({ currentView, onViewChange, ownerName }: Sideba
           {/* Dashboard Title for Desktop */}
           <div className="hidden md:flex items-center gap-3 px-2">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center font-extrabold text-white shadow-lg shadow-emerald-500/30">
-              O
+              {storeName?.charAt(0) || "O"}
             </div>
             <div className="flex flex-col">
               <span className="text-lg font-extrabold bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent leading-none">
-                Owner Hub
+                {storeName}
               </span>
               <span className="text-xs text-zinc-500 font-medium mt-1">Management Portal</span>
             </div>

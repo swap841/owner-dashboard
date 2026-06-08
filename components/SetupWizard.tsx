@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { db } from "@/firebaseConfig";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { getAppConfig, updateAppConfig, getDefaultConfig, AppConfig } from "@/lib/firestore/appConfig";
+import { updateContactInfo } from "@/lib/firestore/contacts";
 
 const STEPS = [
   { id: "welcome", label: "Welcome", icon: Sparkles },
@@ -98,7 +99,15 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const handleFinish = async () => {
     setSaving(true);
     try {
-      await setDoc(doc(db, "appConfig", "settings"), { ...config, updatedAt: serverTimestamp() });
+      await setDoc(doc(db, "appConfig", "settings"), { ...config, updatedAt: serverTimestamp() }, { merge: true });
+      await updateContactInfo({
+        storeName: config.business.name,
+        phone: config.contact.phone,
+        email: config.contact.email,
+        address: config.contact.address || config.store.location.address,
+        logoUrl: config.business.logoUrl,
+        tagline: "Fresh Grocery Express",
+      });
       toast.success("Setup complete! Your store is ready.");
       setSetupCompleted(true);
       onComplete();

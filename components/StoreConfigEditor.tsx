@@ -31,7 +31,7 @@ const TABS: TabConfig[] = [
   { id: "seo", label: "SEO & Contact", icon: Shield },
 ];
 
-const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || "https://grocery-server-10ct.onrender.com";
+const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || "https://grocery-server-u2qq.onrender.com";
 
 export default function StoreConfigEditor() {
   const [config, setConfig] = useState<AppConfig | null>(null);

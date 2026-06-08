@@ -2,6 +2,7 @@
 
 import "./globals.css";
 import Navbar from "../components/Navbar";
+import Providers from "../components/Providers";
 import { ReactNode } from "react";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -25,8 +26,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body>
-        <Navbar />
-        <div className="pt-20">{children}</div>
+        <Providers>
+          <Navbar />
+          <div className="pt-20">{children}</div>
+        </Providers>
       </body>
     </html>
   );
