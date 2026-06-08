@@ -30,6 +30,7 @@ import {
   Banknote,
   Sun,
   Moon,
+  Star,
 } from "lucide-react";
 
 export type DashboardView =
@@ -60,7 +61,9 @@ export type DashboardView =
   | "policyTerms"
   | "policyContact"
   | "reconciliation"
-  | "customerAnalytics";
+  | "customerAnalytics"
+  | "faqManager"
+  | "reviewsViewer";
 
 interface SidebarProps {
   currentView: DashboardView;
@@ -114,7 +117,9 @@ export default function Sidebar({ currentView, onViewChange, ownerName }: Sideba
     { id: "policyRefund", label: "Refund Policy", icon: FileText, color: "text-emerald-500" },
     { id: "policyPrivacy", label: "Privacy Policy", icon: FileText, color: "text-emerald-500" },
     { id: "policyTerms", label: "Terms & Conditions", icon: FileText, color: "text-emerald-500" },
-    { id: "policyContact", label: "Contact Us", icon: FileText, color: "text-emerald-500" },
+          { id: "policyContact", label: "Contact Us", icon: FileText, color: "text-emerald-500" },
+          { id: "faqManager", label: "FAQ Manager", icon: MessageSquare, color: "text-pink-500" },
+          { id: "reviewsViewer", label: "Reviews Viewer", icon: Star, color: "text-amber-500" },
   ] as const;
 
   const toggleSidebar = () => setIsOpen(!isOpen);

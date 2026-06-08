@@ -1,0 +1,10 @@
+/** @type {import('ts-jest').JestConfigWithTsJest} */
+module.exports = {
+  testEnvironment: "jsdom",
+  moduleNameMapper: {
+    "^@/(.*)$": "<rootDir>/$1",
+  },
+  transform: {
+    "^.+\\.tsx?$": ["ts-jest", { tsconfig: "tsconfig.json" }],
+  },
+};

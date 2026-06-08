@@ -52,12 +52,14 @@ import {
   Info,
   Sliders,
   Sparkles,
-  Loader2,      // Fixed missing imports
-  IndianRupee,  // Fixed missing imports
-  CreditCard,   // Fixed missing imports
-  Truck,        // Fixed missing imports
-  Archive,      // Fixed missing imports
+  Loader2,
+  IndianRupee,
+  CreditCard,
+  Truck,
+  Archive,
   BarChart3,
+  MessageSquare,
+  Star,
 } from "lucide-react";
 
 // Components
@@ -85,6 +87,8 @@ import SetupWizard from "@/components/SetupWizard";
 import OutOfRadiusOrders from "@/components/OutOfRadiusOrders";
 import PaymentReconciliation from "@/components/PaymentReconciliation";
 import CustomerAnalytics from "@/components/CustomerAnalytics";
+import FAQManager from "@/components/FAQManager";
+import ReviewsViewer from "@/components/ReviewsViewer";
 
 // Hooks
 import { useProducts } from "@/hooks/useProducts";
@@ -1234,6 +1238,8 @@ function DashboardContent() {
         {currentView === "policyPrivacy" && <PolicyEditor policyType="privacy" />}
         {currentView === "policyTerms" && <PolicyEditor policyType="terms" />}
         {currentView === "policyContact" && <PolicyEditor policyType="contact" />}
+        {currentView === "faqManager" && <FAQManager />}
+        {currentView === "reviewsViewer" && <ReviewsViewer />}
 
       </main>
 
