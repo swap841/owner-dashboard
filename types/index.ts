@@ -68,6 +68,49 @@ export interface ContactInfo {
   heroTitle?: string;
   heroSubtitle?: string;
   aboutText?: string;
+  currencySymbol?: string;
+  heroBadgeText?: string;
+  heroCtaText?: string;
+  heroSecondaryCtaText?: string;
+  categorySectionTitle?: string;
+  categorySectionViewAll?: string;
+  trendingSectionLabel?: string;
+  trendingSectionTitle?: string;
+  trendingSectionBrowseAll?: string;
+  freeDeliveryTitle?: string;
+  freeDeliveryDescription?: string;
+  freeDeliveryAddMore?: string;
+  freeDeliveryCtaText?: string;
+  orderPromptLabel?: string;
+  orderPromptTitle?: string;
+  orderPromptCtaText?: string;
+  defaultBannerEmojis?: string;
+  defaultBannerTagline?: string;
+  pickupHours?: string;
+  footerShopTitle?: string;
+  footerCompanyTitle?: string;
+  footerLegalTitle?: string;
+  contactHelpcenterTitle?: string;
+  contactCallHelpdeskTitle?: string;
+  contactEmailUsTitle?: string;
+  contactAddressTitle?: string;
+  aboutPageTitle?: string;
+  aboutPageSubtitle?: string;
+  aboutStoryTitle?: string;
+  aboutMissionTitle?: string;
+  aboutVisionTitle?: string;
+  aboutAchievementsTitle?: string;
+  profileCurrentOrders?: string;
+  profilePastOrders?: string;
+  workingHours?: string;
+  responseTime?: string;
+  thirdPartyDeliveryCharge?: number;
+  socialMedia?: {
+    facebook?: string;
+    instagram?: string;
+  };
+  ownerFcmToken?: string;
+  ownerPhone?: string;
 }
 
 export interface ContactReply {
