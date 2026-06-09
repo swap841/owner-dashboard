@@ -26,7 +26,11 @@ function StatCard({ label, value, icon: Icon, color, bgColor, subtitle }: {
   );
 }
 
-export default function CustomerAnalytics({ allOrders }: { allOrders: Order[] }) {
+export default function CustomerAnalytics({ allOrders, isLoading, error }: {
+  allOrders: Order[];
+  isLoading?: boolean;
+  error?: Error | null;
+}) {
   const stats = useMemo(() => {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -97,6 +101,36 @@ export default function CustomerAnalytics({ allOrders }: { allOrders: Order[] })
       topCustomers,
     };
   }, [allOrders]);
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="p-4 md:p-5 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm">
+          <p className="text-sm text-red-500 font-semibold">Failed to load analytics data.</p>
+          <p className="text-xs text-zinc-400 mt-1">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="p-4 md:p-5 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm">
+          <div className="h-7 w-48 bg-zinc-200 dark:bg-zinc-800 rounded-lg animate-pulse" />
+          <div className="h-4 w-72 bg-zinc-200 dark:bg-zinc-800 rounded-lg animate-pulse mt-2" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-2xl shadow-xs">
+              <div className="h-3 w-20 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
+              <div className="h-7 w-24 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse mt-2" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

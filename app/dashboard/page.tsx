@@ -197,6 +197,8 @@ function DashboardContent() {
     refetchActiveOrders,
     updateOrderStatus,
     dispatchBasket,
+    isAllOrdersLoading,
+    allOrdersError,
   } = useOrders();
 
   const {
@@ -1069,7 +1071,13 @@ function DashboardContent() {
         {/* ====================================================================
             📊 VIEW: Customer Analytics
             ==================================================================== */}
-        {currentView === "customerAnalytics" && <CustomerAnalytics allOrders={allOrders} />}
+        {currentView === "customerAnalytics" && (
+          <CustomerAnalytics
+            allOrders={allOrders}
+            isLoading={isAllOrdersLoading}
+            error={allOrdersError}
+          />
+        )}
 
         {/* ====================================================================
             🔁 VIEW: Refunds Management
