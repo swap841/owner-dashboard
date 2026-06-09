@@ -945,6 +945,18 @@ export default function StoreConfigEditor() {
             </div>
             {renderInput("SMS API Key", "notifications", "smsApiKey", "password")}
             {config.notifications.smsProvider === "msg91" && renderInput("MSG91 Flow ID", "notifications", "smsFlowId", "password")}
+            <div className="border-t border-zinc-200 pt-4 mt-4">
+              <h3 className="text-xs font-bold text-zinc-700 mb-3">Android SMS Gateway (Phone OTP + Notifications)</h3>
+              {renderInput("Gateway URL", "notifications", "smsGatewayUrl", "text")}
+              {renderInput("Gateway API Key", "notifications", "smsGatewayApiKey", "password")}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-2">
+                <p className="text-[10px] text-amber-700 font-medium">
+                  Install SMSFoundry (₹99/mo) on a spare Android phone with unlimited SMS plan (₹199/mo).
+                  Enter the HTTP URL where the gateway app is running (e.g., http://192.168.1.100:8080/send).
+                  Leave empty to use simulated OTP (printed in server logs).
+                </p>
+              </div>
+            </div>
             {renderInput("WhatsApp API Key", "notifications", "whatsAppApiKey", "password")}
             {renderInput("WhatsApp Phone Number ID", "notifications", "whatsAppPhoneNumberId", "text")}
             {renderInput("WhatsApp Webhook URL", "notifications", "whatsappWebhook", "text")}

@@ -76,6 +76,8 @@ export interface AppConfig {
     smsProvider: string;
     smsApiKey: string;
     smsFlowId: string;
+    smsGatewayUrl: string;
+    smsGatewayApiKey: string;
     whatsAppApiKey: string;
     whatsAppPhoneNumberId: string;
     twilioAccountSid: string;
@@ -171,6 +173,8 @@ export function getDefaultConfig(): AppConfig {
       smsProvider: "",
       smsApiKey: "",
       smsFlowId: "",
+      smsGatewayUrl: "",
+      smsGatewayApiKey: "",
       whatsAppApiKey: "",
       whatsAppPhoneNumberId: "",
       twilioAccountSid: "",

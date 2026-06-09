@@ -29,9 +29,9 @@ const KEY_TEMPLATES: Record<string, { label: string; docs: string; fields: strin
     fields: ["clientId", "clientSecret"],
   },
   sms: {
-    label: "SMS Provider",
+    label: "SMS Gateway (Android Phone)",
     docs: "",
-    fields: ["apiKey", "senderId"],
+    fields: ["gatewayUrl", "apiKey"],
   },
   whatsapp: {
     label: "WhatsApp Business",
@@ -80,6 +80,9 @@ export default function APIKeyManager() {
       if (cfg.notifications?.smsApiKey) {
         initialEditing["sms"] = { ...initialEditing["sms"], apiKey: cfg.notifications.smsApiKey };
       }
+      if (cfg.notifications?.smsGatewayUrl) {
+        initialEditing["sms"] = { ...initialEditing["sms"], gatewayUrl: cfg.notifications.smsGatewayUrl };
+      }
       if (cfg.notifications?.whatsAppApiKey) {
         initialEditing["whatsapp"] = { ...initialEditing["whatsapp"], accessToken: cfg.notifications.whatsAppApiKey };
       }
@@ -121,7 +124,8 @@ export default function APIKeyManager() {
           if (fields.key) paymentUpdate.razorpayKeyId = fields.key;
           if (fields.secret) paymentUpdate.razorpayKeySecret = fields.secret;
         }
-        if (provider === "sms" && fields.apiKey) notificationsUpdate.smsApiKey = fields.apiKey;
+        if (provider === "sms" && fields.apiKey) notificationsUpdate.smsGatewayApiKey = fields.apiKey;
+        if (provider === "sms" && fields.gatewayUrl) notificationsUpdate.smsGatewayUrl = fields.gatewayUrl;
         if (provider === "whatsapp" && fields.accessToken) notificationsUpdate.whatsAppApiKey = fields.accessToken;
       });
 
