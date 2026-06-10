@@ -72,24 +72,13 @@ export default function OutOfRadiusOrders() {
     setDispatchingId(order.id);
     try {
       const partner = partners.find(p => p.id === partnerId);
-      const orderRef = doc(db, "orders", order.id);
-      const snap = await getDoc(orderRef);
-      if (snap.exists()) {
-        await updateDoc(orderRef, {
-          status: "Dispatched",
-          dispatchedAt: new Date().toISOString(),
-          deliveryPartner: { id: partnerId, name: partner?.name || "Partner" },
-          outOfRadius: true,
-        });
-      } else {
-        const userOrderRef = doc(db, "users", order.userId, "orders", order.id);
-        await updateDoc(userOrderRef, {
-          status: "Dispatched",
-          dispatchedAt: new Date().toISOString(),
-          deliveryPartner: { id: partnerId, name: partner?.name || "Partner" },
-          outOfRadius: true,
-        });
-      }
+      const orderRef = doc(db, "users", order.userId, "orders", order.id);
+      await updateDoc(orderRef, {
+        status: "Dispatched",
+        dispatchedAt: new Date().toISOString(),
+        deliveryPartner: { id: partnerId, name: partner?.name || "Partner" },
+        outOfRadius: true,
+      });
       toast.success(`Order dispatched via ${partner?.name || "partner"}`);
       loadAll();
     } catch (err: any) {

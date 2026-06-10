@@ -15,8 +15,8 @@ export function useOrders() {
         const result = await getActiveOrders();
         return result.orders;
       } catch (err) {
-        console.warn("Active orders query failed (non-critical):", err);
-        return [];
+        console.error("Failed to fetch active orders:", err);
+        throw err;
       }
     },
     staleTime: 30000,
@@ -30,8 +30,8 @@ export function useOrders() {
       try {
         return await getAllOrdersGroup();
       } catch (err) {
-        console.warn("All orders query failed (non-critical):", err);
-        return [];
+        console.error("Failed to fetch all orders:", err);
+        throw err;
       }
     },
     staleTime: 60000,

@@ -36,6 +36,7 @@ export function useCoupons() {
   return {
     coupons: couponsQuery.data || [],
     isLoading: couponsQuery.isLoading,
+    error: couponsQuery.error,
     createCoupon: createMutation.mutateAsync,
     updateCoupon: updateMutation.mutateAsync,
     deleteCoupon: deleteMutation.mutateAsync,

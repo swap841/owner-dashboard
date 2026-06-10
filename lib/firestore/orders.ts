@@ -21,6 +21,7 @@ import {
 } from "firebase/firestore";
 import { Order, OrderStatus, DeliveryBoy } from "../../types";
 import { extractAreaCode } from "../areaCode";
+import { getAppConfig } from "./appConfig";
 
 const db = getFirestore(app);
 
@@ -168,6 +169,15 @@ export async function updateOrderStatus(
   }
 
   await updateDoc(orderRef, updates);
+
+  // Dual-write: also update the top-level orders collection for consistency
+  try {
+    const topOrderRef = doc(db, "orders", orderId);
+    await updateDoc(topOrderRef, updates);
+  } catch (e) {
+    // Top-level update is secondary, log but don't fail
+    console.warn("Failed to update top-level order:", e);
+  }
 }
 
 /**
@@ -182,7 +192,7 @@ export interface DeliveryBasket {
   orders: Order[];
 }
 
-export function groupOrdersIntoBaskets(orders: Order[]): DeliveryBasket[] {
+export function groupOrdersIntoBaskets(orders: Order[], maxWeightGrams?: number): DeliveryBasket[] {
   // 1. Filter: "Ready to Dispatch" and unassigned
   const readyOrders = orders.filter(
     (o) => o.status === "Ready to Dispatch" && !o.assignedDeliveryBoyId
@@ -199,7 +209,7 @@ export function groupOrdersIntoBaskets(orders: Order[]): DeliveryBasket[] {
   });
 
   const baskets: DeliveryBasket[] = [];
-  const MAX_BASKET_WEIGHT = 10000; // 10,000 grams = 10 kg
+  const MAX_BASKET_WEIGHT = maxWeightGrams || 10000; // default 10kg in grams
 
   // 3. Bin-pack orders for each area code
   Object.entries(areaGroups).forEach(([areaCode, areaOrders]) => {

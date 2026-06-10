@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 import { getAppConfig, updateAppConfig, clearAppConfigCache, AppConfig } from "@/lib/firestore/appConfig";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/firebaseConfig";
+import { useQueryClient } from "@tanstack/react-query";
 
 type ConfigTab = "general" | "branding" | "homepage" | "about" | "store" | "delivery" | "payment" | "workers" | "notifications" | "features" | "seo" | "categories";
 
@@ -35,6 +36,7 @@ const TABS: TabConfig[] = [
 const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || "https://grocery-server-u2qq.onrender.com";
 
 export default function StoreConfigEditor() {
+  const queryClient = useQueryClient();
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [aboutUs, setAboutUs] = useState<Record<string, any>>({});
   const [homepageText, setHomepageText] = useState<Record<string, any>>({});
@@ -177,6 +179,7 @@ export default function StoreConfigEditor() {
     try {
       await updateAppConfig(config);
       await saveAboutUs();
+      queryClient.invalidateQueries({ queryKey: ["appConfig"] });
 
       // Sync branding to contactInfo/info so customer website components reflect changes
       const { updateContactInfo } = await import("@/lib/firestore/contacts");

@@ -30,6 +30,7 @@ export function useBanners() {
   return {
     banners: bannersQuery.data || [],
     isLoading: bannersQuery.isLoading,
+    error: bannersQuery.error,
     createBanner: createMutation.mutateAsync,
     updateBanner: updateMutation.mutateAsync,
     deleteBanner: deleteMutation.mutateAsync,

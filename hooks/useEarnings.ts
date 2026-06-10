@@ -66,21 +66,23 @@ async function fetchAllOrders(): Promise<any[]> {
   const uid = auth.currentUser?.uid;
 
   // METHOD 1: Try collectionGroup (scans ALL users' orders)
-  try {
-    const cgSnap = await getDocs(collectionGroup(db, "orders"));
-    if (cgSnap.size > 0) {
-      return cgSnap.docs;
+    try {
+      const cgSnap = await getDocs(collectionGroup(db, "orders"));
+      if (cgSnap.size > 0) {
+        return cgSnap.docs;
+      }
+    } catch (error) {
+      console.error("Failed to fetch orders via collectionGroup:", error);
+      // fallback below
     }
-  } catch {
-    // fallback below
-  }
 
   // METHOD 2: Fallback — query the owner's orders subcollection directly
   if (uid) {
     try {
       const subSnap = await getDocs(collection(db, "users", uid, "orders"));
       return subSnap.docs;
-    } catch {
+    } catch (error) {
+      console.error("Failed to fetch orders from owner subcollection:", error);
       // fallback below
     }
   }
@@ -89,7 +91,8 @@ async function fetchAllOrders(): Promise<any[]> {
   try {
     const topSnap = await getDocs(collection(db, "orders"));
     return topSnap.docs;
-  } catch {
+  } catch (error) {
+    console.error("Failed to fetch orders from top-level collection:", error);
     // give up
   }
 

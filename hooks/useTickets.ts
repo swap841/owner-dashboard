@@ -33,6 +33,7 @@ export function useTickets() {
   return {
     tickets: ticketsQuery.data || [],
     isLoading: ticketsQuery.isLoading,
+    error: ticketsQuery.error,
     resolveTicket: resolveMutation.mutateAsync,
     replyToTicket: replyMutation.mutateAsync,
     updateTicketStatus: statusMutation.mutateAsync,

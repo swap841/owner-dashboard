@@ -96,6 +96,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { useOrders } from "@/hooks/useOrders";
 import { useDeliveryBoys } from "@/hooks/useDeliveryBoys";
 import { useRefunds } from "@/hooks/useRefunds";
+import { useAppConfig } from "@/hooks/useAppConfig";
 import { saveOwnerDetailsToDB } from "@/src/ownerUtils";
 
 // Types
@@ -216,6 +217,8 @@ function DashboardContent() {
     recordManualRefund,
     processRazorpayRefund,
   } = useRefunds();
+
+  const { config: appConfig } = useAppConfig();
 
   // Search & Filter state
   const [productSearch, setProductSearch] = useState("");
@@ -949,7 +952,7 @@ function DashboardContent() {
               </div>
             ) : (
               (() => {
-                const baskets = groupOrdersIntoBaskets(allOrders);
+                const baskets = groupOrdersIntoBaskets(allOrders, (appConfig?.deliverySettings?.radiusKm || 10) * 1000);
 
                 if (baskets.length === 0) {
                   return (

@@ -30,6 +30,7 @@ export function useWorkers() {
   return {
     workers: workersQuery.data || [],
     isLoading: workersQuery.isLoading,
+    error: workersQuery.error,
     createWorker: createMutation.mutateAsync,
     updateWorker: updateMutation.mutateAsync,
     deleteWorker: deleteMutation.mutateAsync,
