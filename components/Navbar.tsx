@@ -59,13 +59,18 @@ export default function Navbar() {
         return;
       }
       const { getMessaging, getToken } = await import("firebase/messaging");
-      const { getFirestore, doc, setDoc } = await import("firebase/firestore");
+      const { getFirestore, doc, setDoc, getDoc } = await import("firebase/firestore");
       const msg = getMessaging(app);
-      const token = await getToken(msg, {
-        vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
-      });
-      const db = getFirestore(app);
-      await setDoc(doc(db, "contactInfo", "info"), { ownerFcmToken: token }, { merge: true });
+      const dbInstance = getFirestore(app);
+      // Read VAPID key from Firestore config
+      const configSnap = await getDoc(doc(dbInstance, "appConfig", "settings"));
+      const vapidKey = configSnap.exists() ? configSnap.data()?.notifications?.vapidKey : "";
+      if (!vapidKey) {
+        alert("VAPID key not configured. Go to Dashboard → Settings → Notifications → VAPID Key.");
+        return;
+      }
+      const token = await getToken(msg, { vapidKey });
+      await setDoc(doc(dbInstance, "contactInfo", "info"), { ownerFcmToken: token }, { merge: true });
       alert(`FCM Token saved & copied!\n\n${token}`);
     } catch (err: any) {
       alert("Error getting FCM token: " + err.message);

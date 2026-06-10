@@ -71,6 +71,7 @@ export interface AppConfig {
     deliveryBoyEmails: string[];
   };
   notifications: {
+    vapidKey: string;
     smsTemplates: Record<string, string>;
     whatsappTemplates: Record<string, string>;
     smsProvider: string;
@@ -168,6 +169,7 @@ export function getDefaultConfig(): AppConfig {
       deliveryBoyEmails: [],
     },
     notifications: {
+      vapidKey: "",
       smsTemplates: {},
       whatsappTemplates: {},
       smsProvider: "",

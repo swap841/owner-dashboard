@@ -934,6 +934,13 @@ export default function StoreConfigEditor() {
         return (
           <div className="space-y-4">
             <h2 className="text-sm font-bold text-zinc-800">Notification Settings</h2>
+            <div className="border border-zinc-200 rounded-xl p-4 bg-emerald-50">
+              <h3 className="text-xs font-bold text-zinc-700 mb-2">FCM Push Notifications (OTP Delivery)</h3>
+              {renderInput("VAPID Key", "notifications", "vapidKey", "password")}
+              <p className="text-[10px] text-zinc-500 mt-1">
+                Firebase Console → Project Settings → Cloud Messaging → Web Push → Key pair. Used to send OTP via push notification.
+              </p>
+            </div>
             <div>
               <label className="text-xs font-semibold text-zinc-500">SMS Provider</label>
               <select value={config.notifications.smsProvider}
