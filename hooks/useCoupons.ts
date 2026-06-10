@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { getCoupons, createCoupon, updateCoupon, deleteCoupon } from "../lib/firestore/coupons";
 import { Coupon } from "../types";
 
@@ -16,6 +17,9 @@ export function useCoupons() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coupons"] });
     },
+    onError: (error: Error) => {
+      toast.error(`Failed to save coupon: ${error.message}`);
+    },
   });
 
   const updateMutation = useMutation({
@@ -24,12 +28,18 @@ export function useCoupons() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coupons"] });
     },
+    onError: (error: Error) => {
+      toast.error(`Failed to update coupon: ${error.message}`);
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteCoupon(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coupons"] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to delete coupon: ${error.message}`);
     },
   });
 

@@ -82,7 +82,7 @@ export function normalizeOrder(docId: string, userId: string | undefined, data: 
  * Fetches active/undelivered orders paginated.
  * Uses collectionGroup query across all users' subcollections.
  */
-export async function getActiveOrders(): Promise<PaginatedOrdersResult> {
+export async function getActiveOrders(limitCount: number = 100): Promise<PaginatedOrdersResult> {
   const activeStatuses: OrderStatus[] = [
     "Pending",
     "Packing",
@@ -117,11 +117,12 @@ export async function getActiveOrders(): Promise<PaginatedOrdersResult> {
     return dateB - dateA;
   });
 
+  const hasMore = orders.length > limitCount;
+  const trimmedOrders = orders.slice(0, limitCount);
   const lastVisible = snap.docs.length > 0 ? snap.docs[snap.docs.length - 1] : null;
-  const hasMore = false; // Not paginated — all active orders returned
 
   return {
-    orders,
+    orders: trimmedOrders,
     lastVisible,
     hasMore,
   };

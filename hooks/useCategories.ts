@@ -1,6 +1,7 @@
 // hooks/useCategories.ts
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { getCategories, createCategory, updateCategory, deleteCategory } from "../lib/firestore/categories";
 import { Category } from "../types";
 
@@ -20,6 +21,9 @@ export function useCategories() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
     },
+    onError: (error: Error) => {
+      toast.error(`Failed to save category: ${error.message}`);
+    },
   });
 
   // 3. Update Category Mutation
@@ -29,6 +33,9 @@ export function useCategories() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
     },
+    onError: (error: Error) => {
+      toast.error(`Failed to update category: ${error.message}`);
+    },
   });
 
   // 4. Delete Category Mutation
@@ -37,6 +44,9 @@ export function useCategories() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
       queryClient.invalidateQueries({ queryKey: ["products"] }); // Products might lose cat reference
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to delete category: ${error.message}`);
     },
   });
 

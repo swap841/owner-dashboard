@@ -12,7 +12,7 @@ export function useOrders() {
     queryKey: ["activeOrders"],
     queryFn: async () => {
       try {
-        const result = await getActiveOrders();
+        const result = await getActiveOrders(100);
         return result.orders;
       } catch (err) {
         console.error("Failed to fetch active orders:", err);

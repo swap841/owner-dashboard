@@ -24,13 +24,17 @@ export async function getDeliveryBoys(): Promise<DeliveryBoy[]> {
   const snap = await getDocs(query(collection(db, "deliveryBoys"), orderBy("name")));
   const boys: DeliveryBoy[] = [];
 
-  for (const d of snap.docs) {
+  // Batch fetch all baskets in parallel (avoids N+1 queries)
+  const basketPromises = snap.docs.map(d =>
+    getDocs(collection(db, "deliveryBoys", d.id, "basket")).catch(() => ({ docs: [] as any[] }))
+  );
+  const basketSnaps = await Promise.all(basketPromises);
+
+  snap.docs.forEach((d, index) => {
     const dboyId = d.id;
     const data = d.data();
 
-    // Fetch basket subcollection
-    const basketSnap = await getDocs(collection(db, "deliveryBoys", dboyId, "basket"));
-    const basket: any[] = basketSnap.docs.map((b) => ({
+    const basket: any[] = basketSnaps[index].docs.map((b) => ({
       id: b.id,
       orderId: b.data().orderId || b.id,
       userId: b.data().userId || "",
@@ -56,7 +60,7 @@ export async function getDeliveryBoys(): Promise<DeliveryBoy[]> {
       breakLogs: data.breakLogs || [],
       basket: basket as any,
     });
-  }
+  });
 
   return boys;
 }

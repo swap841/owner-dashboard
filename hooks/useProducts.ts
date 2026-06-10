@@ -1,6 +1,7 @@
 // hooks/useProducts.ts
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { getProducts, createProduct, updateProduct, deleteProduct, archiveProduct, restoreProduct, getArchivedProducts, importProductsFromCSV } from "../lib/firestore/products";
 import { Product } from "../types";
 
@@ -21,6 +22,9 @@ export function useProducts() {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["categories"] }); // Categories are denormalized
     },
+    onError: (error: Error) => {
+      toast.error(`Failed to save product: ${error.message}`);
+    },
   });
 
   // 3. Update Product Mutation
@@ -30,6 +34,9 @@ export function useProducts() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["categories"] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update product: ${error.message}`);
     },
   });
 
@@ -41,6 +48,9 @@ export function useProducts() {
       queryClient.invalidateQueries({ queryKey: ["archived-products"] });
       queryClient.invalidateQueries({ queryKey: ["categories"] });
     },
+    onError: (error: Error) => {
+      toast.error(`Failed to delete product: ${error.message}`);
+    },
   });
 
   // 5. Archive Product Mutation (explicit alias)
@@ -51,6 +61,9 @@ export function useProducts() {
       queryClient.invalidateQueries({ queryKey: ["archived-products"] });
       queryClient.invalidateQueries({ queryKey: ["categories"] });
     },
+    onError: (error: Error) => {
+      toast.error(`Failed to archive product: ${error.message}`);
+    },
   });
 
   // 6. Restore Product Mutation
@@ -60,6 +73,9 @@ export function useProducts() {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["archived-products"] });
       queryClient.invalidateQueries({ queryKey: ["categories"] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to restore product: ${error.message}`);
     },
   });
 
@@ -86,6 +102,9 @@ export function useProducts() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["categories"] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to import products: ${error.message}`);
     },
   });
 

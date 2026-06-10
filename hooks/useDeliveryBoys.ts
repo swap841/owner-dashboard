@@ -1,6 +1,7 @@
 // hooks/useDeliveryBoys.ts
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { getDeliveryBoys, createDeliveryBoy, updateDeliveryBoy, deleteDeliveryBoy, clearOrderFromDriverBasket } from "../lib/firestore/deliveryBoys";
 import { DeliveryBoy } from "../types";
 
@@ -20,6 +21,9 @@ export function useDeliveryBoys() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deliveryBoys"] });
     },
+    onError: (error: Error) => {
+      toast.error(`Failed to save delivery boy: ${error.message}`);
+    },
   });
 
   // 3. Update Delivery Boy Mutation
@@ -29,6 +33,9 @@ export function useDeliveryBoys() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deliveryBoys"] });
     },
+    onError: (error: Error) => {
+      toast.error(`Failed to update delivery boy: ${error.message}`);
+    },
   });
 
   // 4. Delete Delivery Boy Mutation
@@ -36,6 +43,9 @@ export function useDeliveryBoys() {
     mutationFn: (id: string) => deleteDeliveryBoy(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deliveryBoys"] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to delete delivery boy: ${error.message}`);
     },
   });
 
@@ -45,6 +55,9 @@ export function useDeliveryBoys() {
       clearOrderFromDriverBasket(dboyId, orderId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deliveryBoys"] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to clear basket item: ${error.message}`);
     },
   });
 
