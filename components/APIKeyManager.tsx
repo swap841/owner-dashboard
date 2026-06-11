@@ -48,6 +48,21 @@ const KEY_TEMPLATES: Record<string, { label: string; docs: string; fields: strin
     docs: "https://api.imgbb.com/",
     fields: ["apiKey"],
   },
+  smtp: {
+    label: "SMTP (Email OTP)",
+    docs: "",
+    fields: ["host", "port", "user", "pass"],
+  },
+  googleMaps: {
+    label: "Google Maps",
+    docs: "https://console.cloud.google.com/google/maps-apis",
+    fields: ["apiKey"],
+  },
+  sentry: {
+    label: "Sentry (Error Tracking)",
+    docs: "https://docs.sentry.io/",
+    fields: ["dsn"],
+  },
 };
 
 export default function APIKeyManager() {
@@ -86,6 +101,20 @@ export default function APIKeyManager() {
       if (cfg.notifications?.whatsAppApiKey) {
         initialEditing["whatsapp"] = { ...initialEditing["whatsapp"], accessToken: cfg.notifications.whatsAppApiKey };
       }
+      if (cfg.integrations?.smtp?.host) {
+        initialEditing["smtp"] = {
+          host: cfg.integrations.smtp.host || "",
+          port: String(cfg.integrations.smtp.port || "587"),
+          user: cfg.integrations.smtp.user || "",
+          pass: cfg.integrations.smtp.pass || "",
+        };
+      }
+      if (cfg.integrations?.googleMaps?.apiKey) {
+        initialEditing["googleMaps"] = { apiKey: cfg.integrations.googleMaps.apiKey };
+      }
+      if (cfg.integrations?.sentry?.dsn) {
+        initialEditing["sentry"] = { dsn: cfg.integrations.sentry.dsn };
+      }
       setEditingKeys(initialEditing);
     } catch { toast.error("Failed to load config"); }
     setLoading(false);
@@ -107,6 +136,7 @@ export default function APIKeyManager() {
       let aiUpdate = { ...config.ai };
       let paymentUpdate = { ...config.payment };
       let notificationsUpdate = { ...config.notifications };
+      let integrationsUpdate = config.integrations ? { ...config.integrations } : { smtp: { host: "", port: 587, secure: false, user: "", pass: "" }, googleMaps: { apiKey: "" }, sentry: { dsn: "" } };
 
       Object.entries(editingKeys).forEach(([provider, fields]) => {
         const keyVal = fields.key || fields.apiKey || fields.email || fields.phoneNumberId || "";
@@ -127,12 +157,28 @@ export default function APIKeyManager() {
         if (provider === "sms" && fields.apiKey) notificationsUpdate.smsGatewayApiKey = fields.apiKey;
         if (provider === "sms" && fields.gatewayUrl) notificationsUpdate.smsGatewayUrl = fields.gatewayUrl;
         if (provider === "whatsapp" && fields.accessToken) notificationsUpdate.whatsAppApiKey = fields.accessToken;
+        if (provider === "smtp") {
+          integrationsUpdate.smtp = {
+            host: fields.host || "",
+            port: parseInt(fields.port || "587"),
+            secure: fields.secure === "true",
+            user: fields.user || "",
+            pass: fields.pass || "",
+          };
+        }
+        if (provider === "googleMaps" && fields.apiKey) {
+          integrationsUpdate.googleMaps = { apiKey: fields.apiKey };
+        }
+        if (provider === "sentry" && fields.dsn) {
+          integrationsUpdate.sentry = { dsn: fields.dsn };
+        }
       });
 
       updates.apiKeys = apiKeys;
       updates.ai = aiUpdate;
       updates.payment = paymentUpdate;
       updates.notifications = notificationsUpdate;
+      updates.integrations = integrationsUpdate;
 
       await updateAppConfig(updates);
       toast.success("API keys saved securely!");

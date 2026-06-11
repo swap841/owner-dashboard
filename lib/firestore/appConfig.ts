@@ -89,6 +89,11 @@ export interface AppConfig {
     partnerCredentials: Record<string, { apiKey: string; apiSecret: string; enabled: boolean }>;
   };
   apiKeys: Record<string, { key: string; secret: string; testMode: boolean; lastTested: string }>;
+  integrations: {
+    smtp: { host: string; port: number; secure: boolean; user: string; pass: string };
+    googleMaps: { apiKey: string };
+    sentry: { dsn: string };
+  };
   updatedAt?: any;
 }
 
@@ -183,6 +188,11 @@ export function getDefaultConfig(): AppConfig {
       partnerCredentials: {},
     },
     apiKeys: {},
+    integrations: {
+      smtp: { host: "", port: 587, secure: false, user: "", pass: "" },
+      googleMaps: { apiKey: "" },
+      sentry: { dsn: "" },
+    },
   };
 }
 
