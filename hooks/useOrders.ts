@@ -3,27 +3,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getActiveOrders, updateOrderStatus, dispatchBasket, getAllOrdersGroup, normalizeOrder } from "../lib/firestore/orders";
 import { Order, OrderStatus } from "../types";
+import { collectionGroup, getDocs } from "firebase/firestore";
+import { db } from "@/firebaseConfig";
 
 export function useOrders() {
   const queryClient = useQueryClient();
 
-  // 1. Query for Active Orders (Pending, Processing, etc.)
-  const activeOrdersQuery = useQuery<Order[], Error>({
-    queryKey: ["activeOrders"],
-    queryFn: async () => {
-      try {
-        const result = await getActiveOrders(100);
-        return result.orders;
-      } catch (err) {
-        console.error("Failed to fetch active orders:", err);
-        throw err;
-      }
-    },
-    staleTime: 30000,
-    refetchInterval: 30000,
-  });
-
-  // 2. Query for ALL Orders (Unfiltered, used for analytics and earnings)
+  // 1. Shared query for ALL orders (used by orders, earnings, payments, dashboard)
   const allOrdersQuery = useQuery<Order[], Error>({
     queryKey: ["allOrders"],
     queryFn: async () => {
@@ -34,7 +20,21 @@ export function useOrders() {
         throw err;
       }
     },
-    staleTime: 60000,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // 2. Query for Active Orders (derived from allOrders)
+  const activeOrdersQuery = useQuery<Order[], Error>({
+    queryKey: ["activeOrders"],
+    queryFn: async () => {
+      const allOrders = queryClient.getQueryData<Order[]>(["allOrders"]);
+      if (allOrders) {
+        const activeStatuses = ["Pending", "Packing", "Assigned", "Accepted", "Ready to Dispatch", "Out for Delivery", "Awaiting Verification"];
+        return allOrders.filter((o) => activeStatuses.includes(o.status));
+      }
+      return (await getActiveOrders(100)).orders;
+    },
+    staleTime: 5 * 60 * 1000,
   });
 
   // 3. Update Order Status Mutation

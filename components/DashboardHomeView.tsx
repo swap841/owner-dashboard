@@ -76,8 +76,8 @@ export default function DashboardHomeView({ onNavigate }: { onNavigate?: (view: 
 
       return { orders, pendingOrders, deliveredOrders, todayDelivered, todayRevenue, lowStock, activeCoupons, unreadContacts, productsSnap, workersSnap, boysSnap, ticketsSnap };
     },
-    refetchInterval: 30000,
-    staleTime: 10000,
+    refetchInterval: 300000,
+    staleTime: 300000,
     enabled: !!uid,
   });
 

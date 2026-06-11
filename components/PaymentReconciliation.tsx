@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { collectionGroup, collection, getDocs, getFirestore, doc, updateDoc, Timestamp } from "firebase/firestore";
+import { collection, getDocs, getFirestore, doc, updateDoc, Timestamp } from "firebase/firestore";
 import { app, auth } from "../firebaseConfig";
 import {
   Loader2,
@@ -59,35 +59,21 @@ interface ReconciliationOrder {
   };
 }
 
-async function fetchAllDeliveredOrders(): Promise<ReconciliationOrder[]> {
-  const uid = auth.currentUser?.uid;
+async function fetchAllDeliveredOrders(cachedOrders: any[] | undefined): Promise<ReconciliationOrder[]> {
   let allDocs: any[] = [];
 
-  // METHOD 1: collectionGroup
-  try {
-    const cgSnap = await getDocs(collectionGroup(db, "orders"));
-    if (cgSnap.size > 0) allDocs = cgSnap.docs;
-  } catch {
-    // fallback
-  }
-
-  // METHOD 2: owner subcollection
-  if (allDocs.length === 0 && uid) {
+  if (cachedOrders && cachedOrders.length > 0) {
+    allDocs = cachedOrders.map((o: any) => ({ id: o.id, data: () => o }));
+  } else {
     try {
-      const subSnap = await getDocs(collection(db, "users", uid, "orders"));
-      allDocs = subSnap.docs;
-    } catch {
-      // fallback
-    }
-  }
-
-  // METHOD 3: top-level
-  if (allDocs.length === 0) {
-    try {
-      const topSnap = await getDocs(collection(db, "orders"));
-      allDocs = topSnap.docs;
-    } catch {
-      // empty
+      const cgSnap = await getDocs((await import("firebase/firestore")).collectionGroup(db, "orders"));
+      allDocs = cgSnap.docs || [];
+    } catch {}
+    if (allDocs.length === 0) {
+      try {
+        const topSnap = await getDocs((await import("firebase/firestore")).collection(db, "orders"));
+        allDocs = topSnap.docs || [];
+      } catch {}
     }
   }
 
@@ -125,8 +111,11 @@ export default function PaymentReconciliation() {
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["reconciliation"],
-    queryFn: fetchAllDeliveredOrders,
-    staleTime: 30000,
+    queryFn: () => {
+      const cachedOrders = queryClient.getQueryData<any[]>(["allOrders"]);
+      return fetchAllDeliveredOrders(cachedOrders);
+    },
+    staleTime: 5 * 60 * 1000,
   });
 
   const settleMutation = useMutation({

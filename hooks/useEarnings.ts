@@ -1,8 +1,9 @@
 // hooks/useEarnings.ts
 
-import { useQuery } from "@tanstack/react-query";
-import { collectionGroup, collection, getDocs, getFirestore } from "firebase/firestore";
-import { app, auth } from "../firebaseConfig";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { collection, getDocs, getFirestore } from "firebase/firestore";
+import { app } from "../firebaseConfig";
+import type { Order } from "../types";
 
 const db = getFirestore(app);
 
@@ -63,47 +64,39 @@ export interface EarningsData {
 }
 
 async function fetchAllOrders(): Promise<any[]> {
-  const uid = auth.currentUser?.uid;
-
-  // METHOD 1: Try collectionGroup (scans ALL users' orders)
-    try {
-      const cgSnap = await getDocs(collectionGroup(db, "orders"));
-      if (cgSnap.size > 0) {
-        return cgSnap.docs;
-      }
-    } catch (error) {
-      console.error("Failed to fetch orders via collectionGroup:", error);
-      // fallback below
-    }
-
-  // METHOD 2: Fallback — query the owner's orders subcollection directly
-  if (uid) {
-    try {
-      const subSnap = await getDocs(collection(db, "users", uid, "orders"));
-      return subSnap.docs;
-    } catch (error) {
-      console.error("Failed to fetch orders from owner subcollection:", error);
-      // fallback below
-    }
-  }
-
-  // METHOD 3: Fallback — query top-level orders collection
-  try {
-    const topSnap = await getDocs(collection(db, "orders"));
-    return topSnap.docs;
-  } catch (error) {
-    console.error("Failed to fetch orders from top-level collection:", error);
-    // give up
-  }
-
   return [];
 }
 
 export function useEarnings() {
+  const queryClient = useQueryClient();
   return useQuery<EarningsData>({
     queryKey: ["earnings"],
     queryFn: async () => {
-      const allDocs = await fetchAllOrders();
+      const cachedOrders = queryClient.getQueryData<Order[]>(["allOrders"]);
+      const allDocs: any[] = [];
+      if (cachedOrders && cachedOrders.length > 0) {
+        cachedOrders.forEach((o: any) => {
+          allDocs.push({ id: o.id, data: () => o, ref: { parent: { parent: { id: o.userId } } } });
+        });
+      } else {
+        const uid = (await import("../firebaseConfig")).auth.currentUser?.uid;
+        try {
+          const cgSnap = await getDocs((await import("firebase/firestore")).collectionGroup(db, "orders"));
+          if (cgSnap.size > 0) allDocs.push(...cgSnap.docs);
+        } catch {}
+        if (allDocs.length === 0 && uid) {
+          try {
+            const subSnap = await getDocs((await import("firebase/firestore")).collection(db, "users", uid, "orders"));
+            allDocs.push(...subSnap.docs);
+          } catch {}
+        }
+        if (allDocs.length === 0) {
+          try {
+            const topSnap = await getDocs((await import("firebase/firestore")).collection(db, "orders"));
+            allDocs.push(...topSnap.docs);
+          } catch {}
+        }
+      }
 
       const workerSnap = await getDocs(collection(db, "workers")).catch(() => ({ docs: [] as any[] }));
       const boysSnap = await getDocs(collection(db, "deliveryBoys")).catch(() => ({ docs: [] as any[] }));

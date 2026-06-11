@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { Loader2, Truck, MapPin, Package, Phone, User, IndianRupee, RefreshCw, ExternalLink } from "lucide-react";
 import toast from "react-hot-toast";
-import { collectionGroup, getDocs, query, where, doc, updateDoc, getDoc, collection } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/firebaseConfig";
 import { getAppConfig, AppConfig } from "@/lib/firestore/appConfig";
+import { useQueryClient } from "@tanstack/react-query";
 import { Order } from "@/types";
 
 export default function OutOfRadiusOrders() {
@@ -15,35 +16,37 @@ export default function OutOfRadiusOrders() {
   const [partners, setPartners] = useState<any[]>([]);
   const [dispatchingId, setDispatchingId] = useState<string | null>(null);
   const [partnerSelections, setPartnerSelections] = useState<Record<string, string>>({});
+  const queryClient = useQueryClient();
 
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
     setLoading(true);
     try {
-      const cfg = await getAppConfig(true);
+      const cfg = await getAppConfig();
       setConfig(cfg);
 
       const partnerSnap = await getDocs(collection(db, "deliveryPartners"));
       setPartners(partnerSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-      const statuses = ["Ready to Dispatch", "Packing", "Pending"];
-      const result: Order[] = [];
-      for (const status of statuses) {
-        const q = query(collectionGroup(db, "orders"), where("status", "==", status));
-        const snap = await getDocs(q);
-        snap.forEach(d => {
-          const data = d.data();
-          const ref = d.ref;
-          const parts = ref.path.split("/");
-          const userId = parts[1];
-          result.push({
-            id: d.id,
-            userId,
-            ...data,
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt || Date.now()),
-          } as Order);
-        });
+      const cachedOrders = queryClient.getQueryData<Order[]>(["allOrders"]);
+      let result: Order[] = [];
+      if (cachedOrders && cachedOrders.length > 0) {
+        const statuses = ["Ready to Dispatch", "Packing", "Pending"];
+        result = cachedOrders.filter((o) => statuses.includes(o.status));
+      } else {
+        const { collectionGroup, query, where } = await import("firebase/firestore");
+        const statuses = ["Ready to Dispatch", "Packing", "Pending"];
+        for (const status of statuses) {
+          const q = query(collectionGroup(db, "orders"), where("status", "==", status));
+          const snap = await getDocs(q);
+          snap.forEach((d: any) => {
+            const data = d.data();
+            const parts = d.ref.path.split("/");
+            const userId = parts[1];
+            result.push({ id: d.id, userId, ...data, createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt || Date.now()) } as Order);
+          });
+        }
       }
 
       const localPincodes = cfg.deliveryZones?.localPincodes || [];
