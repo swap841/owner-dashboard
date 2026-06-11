@@ -1270,6 +1270,13 @@ function DashboardContent() {
               await updateProduct({ id: activeProductModal.id!, updates: pPayload });
             }
             clearProductCache();
+            const revalidateUrl = process.env.NEXT_PUBLIC_REVALIDATE_URL || "https://customer-website-1.onrender.com/api/revalidate";
+            const revalidateSecret = process.env.NEXT_PUBLIC_REVALIDATE_SECRET || "";
+            if (revalidateSecret) {
+              const paths = ["/", "/products"];
+              if (activeProductModal !== "new" && activeProductModal?.id) paths.push(`/products/${activeProductModal.id}`);
+              try { await fetch(revalidateUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paths, secret: revalidateSecret }) }); } catch {}
+            }
           }}
           onClose={() => setActiveProductModal(null)}
         />
