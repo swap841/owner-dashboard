@@ -361,7 +361,6 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                 <select value={config.notifications.smsProvider} onChange={e => update("notifications", "smsProvider", e.target.value)}
                   className="w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 text-sm focus:outline-none">
                   <option value="">None</option>
-                  <option value="twilio">Twilio</option>
                   <option value="msg91">MSG91</option>
                   <option value="textlocal">TextLocal</option>
                   <option value="custom">Custom API</option>

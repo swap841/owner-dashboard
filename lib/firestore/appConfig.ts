@@ -81,10 +81,6 @@ export interface AppConfig {
     smsGatewayApiKey: string;
     whatsAppApiKey: string;
     whatsAppPhoneNumberId: string;
-    twilioAccountSid: string;
-    twilioAuthToken: string;
-    twilioPhoneNumber: string;
-    voiceWebhookUrl: string;
     whatsappWebhook: string;
   };
   deliveryPartners: {
@@ -179,10 +175,6 @@ export function getDefaultConfig(): AppConfig {
       smsGatewayApiKey: "",
       whatsAppApiKey: "",
       whatsAppPhoneNumberId: "",
-      twilioAccountSid: "",
-      twilioAuthToken: "",
-      twilioPhoneNumber: "",
-      voiceWebhookUrl: "",
       whatsappWebhook: "",
     },
     deliveryPartners: {

@@ -268,10 +268,6 @@ describe("Unit Tests: appConfig.ts", () => {
       expect(config.notifications.smsProvider).toBe("");
       expect(config.notifications.smsApiKey).toBe("");
       expect(config.notifications.whatsAppApiKey).toBe("");
-      expect(config.notifications.twilioAccountSid).toBe("");
-      expect(config.notifications.twilioAuthToken).toBe("");
-      expect(config.notifications.twilioPhoneNumber).toBe("");
-      expect(config.notifications.voiceWebhookUrl).toBe("");
       expect(config.notifications.whatsappWebhook).toBe("");
     });
 
@@ -570,21 +566,6 @@ describe("Config Sync Tests", () => {
 
       const callArgs = mockUpdateDoc.mock.calls[0];
       expect(callArgs[1]).toHaveProperty("notifications.whatsAppApiKey", "wa-key");
-    });
-
-    it("mirrors Twilio credentials to notifications section", async () => {
-      const { updateAppConfig } = require("../lib/firestore/appConfig");
-      await updateAppConfig({
-        notifications: {
-          twilioAccountSid: "AC123",
-          twilioAuthToken: "auth-token",
-          twilioPhoneNumber: "+15551234567",
-        },
-      });
-
-      const callArgs = mockUpdateDoc.mock.calls[0];
-      expect(callArgs[1]).toHaveProperty("notifications.twilioAccountSid", "AC123");
-      expect(callArgs[1]).toHaveProperty("notifications.twilioAuthToken", "auth-token");
     });
   });
 
